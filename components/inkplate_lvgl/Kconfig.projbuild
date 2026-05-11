@@ -1,0 +1,44 @@
+menu "Inkplate Board"
+
+choice INKPLATE_BOARD
+    prompt "Board"
+
+    config INKPLATE_BOARD_INKPLATE2
+        bool "Inkplate2"
+
+    config INKPLATE_BOARD_INKPLATE4
+        bool "Inkplate4"
+
+    config INKPLATE_BOARD_INKPLATE5
+        bool "Inkplate5"
+
+    config INKPLATE_BOARD_INKPLATE6
+        bool "Inkplate6"
+
+    config INKPLATE_BOARD_INKPLATE6COLOR
+        bool "Inkplate6 Color"
+
+    config INKPLATE_BOARD_INKPLATE6FLICK
+        bool "Inkplate6 Flick"
+
+    config INKPLATE_BOARD_INKPLATE10
+        bool "Inkplate10"
+
+    config INKPLATE_BOARD_INKPLATE13
+        bool "Inkplate13"
+
+endchoice
+
+endmenu
+
+menu "Wi-Fi Configuration"
+
+config WIFI_SSID
+    string "WiFi SSID"
+    default ""
+
+config WIFI_PASSWORD
+    string "WiFi Password"
+    default ""
+
+endmenu
