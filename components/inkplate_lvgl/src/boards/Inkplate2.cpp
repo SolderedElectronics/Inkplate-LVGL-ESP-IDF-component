@@ -36,6 +36,8 @@ static const char *TAG = "Inkplate2";
 /* -------------------------------------------------------------------------- */
 
 Inkplate2::Inkplate2() : m_spi(EPAPER_DIN, EPAPER_CLK) {
+  setRotation(3);
+
   m_framebufferColor = (uint8_t *)heap_caps_malloc(
       E_INK_WIDTH * E_INK_HEIGHT / 4, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!m_framebufferColor)
@@ -185,21 +187,32 @@ void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
   int32_t w = lv_area_get_width(area);
   int32_t h = lv_area_get_height(area);
 
+  lv_color_format_t fmt = lv_display_get_color_format(disp);
+  uint8_t bpp = lv_color_format_get_size(fmt);
+
   for (int32_t y = 0; y < h; y++) {
-    const uint8_t *row = px_map + y * w * 2; // RGB565: 2 bytes per pixel
+    const uint8_t *row = px_map + (size_t)y * w * bpp;
     for (int32_t x = 0; x < w; x++) {
-      uint16_t px = row[x * 2] | ((uint16_t)row[x * 2 + 1] << 8);
+      const uint8_t *p = row + x * bpp;
+      uint8_t r, g, b;
 
-      uint8_t r5 = (px >> 11) & 0x1F;
-      uint8_t g6 = (px >> 5) & 0x3F;
-      uint8_t b5 = px & 0x1F;
-      uint16_t bright = r5 + g6 + b5;
+      if (fmt == LV_COLOR_FORMAT_RGB565) {
+        uint16_t px = p[0] | ((uint16_t)p[1] << 8);
+        r = ((px >> 11) & 0x1F) << 3;
+        g = ((px >> 5) & 0x3F) << 2;
+        b = (px & 0x1F) << 3;
+      } else if (fmt == LV_COLOR_FORMAT_RGB888) {
+        b = p[0]; g = p[1]; r = p[2]; // lv_color_t layout: blue, green, red
+      } else {
+        r = g = b = p[0]; // L8 or unknown: single byte luminance
+      }
 
+      uint16_t bright = (uint16_t)r + g + b;
       uint8_t color;
-      if (bright < 20) {
-        color = INKPLATE2_BLACK;
-      } else if (r5 > 20 && g6 < 16 && b5 < 16) {
+      if (r > 160 && g < 128 && b < 128) {
         color = INKPLATE2_RED;
+      } else if (bright < 280) {
+        color = INKPLATE2_BLACK;
       } else {
         color = INKPLATE2_WHITE;
       }
