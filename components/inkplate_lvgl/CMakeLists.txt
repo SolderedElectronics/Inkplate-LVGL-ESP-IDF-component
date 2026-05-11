@@ -34,12 +34,20 @@ elseif(CONFIG_INKPLATE_BOARD_INKPLATE4)
         "include/features/LSM6DS3/libs")
 elseif(CONFIG_INKPLATE_BOARD_INKPLATE2)
     set(BOARD_SRC "src/boards/Inkplate2.cpp")
+    set(DITHER_SRC "src/graphics/ditheringColor/ditherAlgorithm.cpp")
+    set(DITHER_INCLUDES "include/graphics/ditheringColor")
+endif()
+
+if(NOT DEFINED DITHER_SRC)
+    set(DITHER_SRC "src/graphics/ditheringGrayscale/ditherAlgorithm.cpp")
+    set(DITHER_INCLUDES "include/graphics/ditheringGrayscale")
 endif()
 
 if(CONFIG_INKPLATE_BOARD_INKPLATE2)
 idf_component_register(SRCS "src/features/WiFi.cpp" "src/features/SPI.cpp"
                             "src/boards/Inkplate.cpp" "src/features/I2C.cpp"
                             ${BOARD_SRC}
+                            ${DITHER_SRC}
                             ${LVGL_SRCS}
                             "src/lvgl/custom_alocation_algorithm.c"
                        REQUIRES "esp_driver_gpio"
@@ -49,6 +57,7 @@ idf_component_register(SRCS "src/features/WiFi.cpp" "src/features/SPI.cpp"
                        INCLUDE_DIRS "include"
                                     "include/features"
                                     "include/boards"
+                                    ${DITHER_INCLUDES}
                                     "src/lvgl"
                                     "src/lvgl/src"
                                     )
@@ -59,6 +68,7 @@ idf_component_register(SRCS "src/features/I2C.cpp" "src/features/RTC.cpp" "src/f
                             "src/boards/BoardCommon.cpp" "src/features/TouchCypress.cpp" "src/features/TouchElan.cpp"
                             "src/boards/Inkplate.cpp"
                             ${BOARD_SRC}
+                            ${DITHER_SRC}
                             ${SENSOR_SRCS}
                             ${LVGL_SRCS}
                             "src/lvgl/custom_alocation_algorithm.c"
@@ -68,6 +78,7 @@ idf_component_register(SRCS "src/features/I2C.cpp" "src/features/RTC.cpp" "src/f
                        INCLUDE_DIRS "include"
                                     "include/features"
                                     "include/boards"
+                                    ${DITHER_INCLUDES}
                                     ${SENSOR_INCLUDES}
                                     "src/lvgl"
                                     "src/lvgl/src"
