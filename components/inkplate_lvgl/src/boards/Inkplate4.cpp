@@ -560,6 +560,7 @@ void IRAM_ATTR display_flush_callback(lv_display_t *disp, const lv_area_t *area,
     int32_t w = lv_area_get_width(area);
     int32_t h = lv_area_get_height(area);
 
+
     if (w <= 0 || h <= 0 || px_map == nullptr || area->x1 < 0 || area->y1 < 0 ||
         area->x2 >= E_INK_WIDTH || area->y2 >= E_INK_HEIGHT)
     {

@@ -33,7 +33,8 @@ typedef enum {
 } displayMode_t;
 
 #if defined(CONFIG_INKPLATE_BOARD_INKPLATE6) ||                                \
-    defined(CONFIG_INKPLATE_BOARD_INKPLATE6FLICK)
+    defined(CONFIG_INKPLATE_BOARD_INKPLATE6FLICK) ||                           \
+    defined(CONFIG_INKPLATE_BOARD_INKPLATE5)
 class BoardBase : public I2S
 #else
 class BoardBase

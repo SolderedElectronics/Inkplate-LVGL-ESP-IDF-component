@@ -25,6 +25,7 @@
 #pragma once
 
 #include "WiFi.h"
+#include "lvgl.h"
 #include "sdkconfig.h"
 
 #if defined(CONFIG_INKPLATE_BOARD_INKPLATE6) ||                                \
@@ -56,7 +57,7 @@
 
 class Inkplate : public INKPLATE_BOARD_CLASS {
 public:
-  Inkplate();
+  Inkplate(lv_display_render_mode_t mode = LV_DISPLAY_RENDER_MODE_FULL);
 
   WiFi wifi;
 };

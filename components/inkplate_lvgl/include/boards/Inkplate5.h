@@ -30,9 +30,13 @@
 
 #include "BoardCommon.h"
 #include "GraphicsDefs.h"
+#include "ditherAlgorithm.h"
+#include "lvgl.h"
 
 #include "PCAL.h"
 #include "RTC.h"
+
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 
 extern PCAL expander1;
 
@@ -59,7 +63,13 @@ public:
    * @brief Construct a new Inkplate 5 object.
    *
    */
-  Inkplate5();
+  Inkplate5(lv_display_render_mode_t mode = LV_DISPLAY_RENDER_MODE_FULL);
+
+  lv_display_t *getDisplay() { return m_disp; }
+
+  void enableDithering(bool state) { m_ditherEnabled = state; }
+  bool m_ditherEnabled = false;
+  DitherAlgorithm m_dither;
 
   /**
    * @brief Send only the changed pixels to the display (1-bit mode only).
@@ -146,4 +156,9 @@ private:
   uint32_t *m_glut = nullptr;
   uint32_t *m_glut2 = nullptr;
   uint32_t *m_pinLUT = nullptr;
+
+  uint8_t *m_lvglBuf = nullptr;
+  lv_display_t *m_disp = nullptr;
+
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 };

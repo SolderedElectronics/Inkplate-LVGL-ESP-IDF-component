@@ -23,7 +23,7 @@
 
 #include "Inkplate.h"
 
-Inkplate::Inkplate() {
+Inkplate::Inkplate(lv_display_render_mode_t mode) : INKPLATE_BOARD_CLASS(mode) {
   clearDisplay();
 #if defined(CONFIG_INKPLATE_BOARD_INKPLATE2)
   setRotation(3);
