@@ -30,6 +30,7 @@
 #include "soc/soc.h"
 
 #include "I2S.h"
+#include "BoardCommon.h"
 
 static const char *TAG = "ESP_I2S";
 

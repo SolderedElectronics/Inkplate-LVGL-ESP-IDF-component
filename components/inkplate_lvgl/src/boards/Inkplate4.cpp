@@ -30,6 +30,7 @@
 #include "I2C.h"
 #include "Inkplate4.h"
 #include "TPS.h"
+#include "lvgl.h"
 
 // Peripherals defined in BoardCommon.cpp
 extern PCAL expander2;
@@ -42,7 +43,7 @@ static const char *TAG = "INKPLATE4";
 /*                              Public functions                              */
 /* -------------------------------------------------------------------------- */
 
-Inkplate4::Inkplate4()
+Inkplate4::Inkplate4(lv_display_render_mode_t mode)
     : BoardCommon(E_INK_WIDTH, E_INK_HEIGHT, 0,
                   0) //, frontlight(i2c, expander1)
 {
@@ -61,6 +62,18 @@ Inkplate4::Inkplate4()
   touchscreen.begin(i2c, expander2, true);
   frontlight.begin(i2c, expander1, FRONTLIGHT_EN);
   frontlight.setState(false);
+
+  lv_init();
+  const size_t buf_size = E_INK_WIDTH * E_INK_HEIGHT;  // L8 = 1 byte/pixel
+  m_lvglBuf = (uint8_t *)heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
+  if (!m_lvglBuf)
+    ESP_LOGE(TAG, "Failed to allocate LVGL buffer");
+  m_disp = lv_display_create(E_INK_WIDTH, E_INK_HEIGHT);
+  lv_display_set_color_format(m_disp, LV_COLOR_FORMAT_L8);
+  lv_display_set_buffers(m_disp, m_lvglBuf, NULL, buf_size, mode);
+  lv_display_set_flush_cb(m_disp, display_flush_callback);
+  lv_display_set_user_data(m_disp, this);
+  m_dither.begin(this);
 
   ESP_LOGI(TAG, "Initialization finished!");
 }
@@ -538,4 +551,75 @@ void Inkplate4::pinsZstate() {
   gpio_set_direction(GPIO_NUM_25, GPIO_MODE_INPUT);
   gpio_set_direction(GPIO_NUM_26, GPIO_MODE_INPUT);
   gpio_set_direction(GPIO_NUM_27, GPIO_MODE_INPUT);
+}
+
+void IRAM_ATTR display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+    Inkplate4 *self = static_cast<Inkplate4 *>(lv_display_get_user_data(disp));
+
+    int32_t w = lv_area_get_width(area);
+    int32_t h = lv_area_get_height(area);
+
+    if (w <= 0 || h <= 0 || px_map == nullptr || area->x1 < 0 || area->y1 < 0 ||
+        area->x2 >= E_INK_WIDTH || area->y2 >= E_INK_HEIGHT)
+    {
+        lv_display_flush_ready(disp);
+        return;
+    }
+
+    bool is3bit = (self->getDisplayMode() == GRAYSCALE);
+
+    if (self->m_ditherEnabled && lv_display_get_render_mode(disp) == LV_DISPLAY_RENDER_MODE_FULL)
+    {
+        self->m_dither.ditherFramebuffer(px_map, E_INK_WIDTH, E_INK_HEIGHT, is3bit ? 1 : 0);
+    }
+    else
+    {
+        uint8_t *buffer1b = self->m_newFramebuffer;
+        uint8_t *buffer3b = self->m_framebufferColor;
+
+        const int width_bytes_1b = E_INK_WIDTH / 8;
+        const int width_bytes_3b = E_INK_WIDTH / 2;
+
+        const uint8_t *maskLUT = pixelMaskLUT;
+        const uint8_t *maskGLUT = pixelMaskGLUT;
+
+        for (int32_t y = 0; y < h; y++)
+        {
+            int32_t lv_y = area->y1 + y;
+            const uint8_t *src_row = px_map + (y * w);
+
+            for (int32_t x = 0; x < w; x++)
+            {
+                int32_t lv_x = area->x1 + x;
+
+                // 90° CW rotation: map LVGL (lv_x, lv_y) → EPD (epd_x, epd_y)
+                int32_t epd_x = (E_INK_HEIGHT - 1) - lv_y;
+                int32_t epd_y = lv_x;
+
+                uint8_t gray = src_row[x];
+
+                if (is3bit)
+                {
+                    uint8_t gray3 = gray >> 5;
+                    int x_byte = epd_x / 2;
+                    int x_sub = epd_x % 2;
+                    uint8_t temp = buffer3b[width_bytes_3b * epd_y + x_byte];
+                    buffer3b[width_bytes_3b * epd_y + x_byte] =
+                        (maskGLUT[x_sub] & temp) | (x_sub ? gray3 : (gray3 << 4));
+                }
+                else
+                {
+                    uint8_t bit = (gray < 128) ? 1 : 0;
+                    int x_byte = epd_x / 8;
+                    int x_sub = epd_x % 8;
+                    uint8_t temp = buffer1b[width_bytes_1b * epd_y + x_byte];
+                    buffer1b[width_bytes_1b * epd_y + x_byte] =
+                        (~maskLUT[x_sub] & temp) | (bit ? maskLUT[x_sub] : 0);
+                }
+            }
+        }
+    }
+
+    lv_display_flush_ready(disp);
 }

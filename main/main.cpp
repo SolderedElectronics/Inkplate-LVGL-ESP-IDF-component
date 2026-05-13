@@ -1,17 +1,17 @@
-#include "Inkplate2.h"
+#include "Inkplate.h"
 #include "cat.h"
 #include "lvgl.h"
 
 extern "C" void app_main(void) {
-    Inkplate2 inkplate;
+    Inkplate inkplate;
     inkplate.enableDithering(true);
 
     static lv_image_dsc_t cat_dsc;
     cat_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
-    cat_dsc.header.cf = LV_COLOR_FORMAT_RGB888;
+    cat_dsc.header.cf = LV_COLOR_FORMAT_L8;
     cat_dsc.header.w = CAT_WIDTH;
     cat_dsc.header.h = CAT_HEIGHT;
-    cat_dsc.header.stride = CAT_WIDTH * 3;
+    cat_dsc.header.stride = CAT_WIDTH;  // L8: 1 byte per pixel
     cat_dsc.data_size = sizeof(cat);
     cat_dsc.data = cat;
 

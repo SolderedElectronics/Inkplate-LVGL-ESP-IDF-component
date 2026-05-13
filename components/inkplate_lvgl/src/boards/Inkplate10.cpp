@@ -31,6 +31,7 @@
 #include "I2C.h"
 #include "Inkplate10.h"
 #include "TPS.h"
+#include "lvgl.h"
 
 // Peripherals defined in BoardCommon.cpp
 extern PCAL expander2;
@@ -43,13 +44,25 @@ static const char *TAG = "INKPLATE10";
 /*                              Public functions                              */
 /* -------------------------------------------------------------------------- */
 
-Inkplate10::Inkplate10() : BoardCommon(E_INK_WIDTH, E_INK_HEIGHT, 12, 9) {
+Inkplate10::Inkplate10(lv_display_render_mode_t mode) : BoardCommon(E_INK_WIDTH, E_INK_HEIGHT, 12, 9) {
   ESP_ERROR_CHECK(initBuffers());
   calculateLUTs();
   gpioInit();
   blockGpioPins();
   ESP_ERROR_CHECK(pmicBegin());
   rtc.begin(i2c.getBusHandle());
+
+  lv_init();
+  const size_t buf_size = E_INK_WIDTH * E_INK_HEIGHT;  // L8 = 1 byte/pixel
+  m_lvglBuf = (uint8_t *)heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
+  if (!m_lvglBuf)
+    ESP_LOGE(TAG, "Failed to allocate LVGL buffer");
+  m_disp = lv_display_create(E_INK_WIDTH, E_INK_HEIGHT);
+  lv_display_set_color_format(m_disp, LV_COLOR_FORMAT_L8);
+  lv_display_set_buffers(m_disp, m_lvglBuf, NULL, buf_size, mode);
+  lv_display_set_flush_cb(m_disp, display_flush_callback);
+  lv_display_set_user_data(m_disp, this);
+  m_dither.begin(this);
 
   ESP_LOGI(TAG, "Initialization finished!");
 }
@@ -591,4 +604,84 @@ esp_err_t Inkplate10::burnWaveformToEEPROM(struct waveformData waveformData) {
 
   nvs_close(handle);
   return ret;
+}
+
+void IRAM_ATTR display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+    Inkplate10 *self = static_cast<Inkplate10 *>(lv_display_get_user_data(disp));
+
+    int32_t w = lv_area_get_width(area);
+    int32_t h = lv_area_get_height(area);
+
+    if (w <= 0 || h <= 0 || px_map == nullptr || area->x1 < 0 || area->y1 < 0 ||
+        area->x2 >= E_INK_WIDTH || area->y2 >= E_INK_HEIGHT)
+    {
+        lv_display_flush_ready(disp);
+        return;
+    }
+
+    bool is3bit = (self->getDisplayMode() == GRAYSCALE);
+
+    if (self->m_ditherEnabled && lv_display_get_render_mode(disp) == LV_DISPLAY_RENDER_MODE_FULL)
+    {
+        self->m_dither.ditherFramebuffer(px_map, E_INK_WIDTH, E_INK_HEIGHT, is3bit ? 1 : 0);
+    }
+    else
+    {
+        uint8_t *buffer1b = self->m_newFramebuffer;
+        uint8_t *buffer3b = self->m_framebufferColor;
+
+        const int width_bytes_1b = E_INK_WIDTH / 8;
+        const int width_bytes_3b = E_INK_WIDTH / 2;
+
+        const uint8_t *maskLUT = pixelMaskLUT;
+        const uint8_t *maskGLUT = pixelMaskGLUT;
+
+        for (int32_t y = 0; y < h; y++)
+        {
+            int32_t screen_y = area->y1 + y;
+            const uint8_t *src_row = px_map + (y * w);
+
+            if (is3bit)
+            {
+                uint8_t *dst_row = buffer3b + (width_bytes_3b * screen_y);
+
+                for (int32_t x = 0; x < w; x++)
+                {
+                    int32_t screen_x = area->x1 + x;
+                    if (screen_x >= E_INK_WIDTH)
+                        break;
+
+                    uint8_t gray3 = src_row[x] >> 5;
+                    int x_byte = screen_x / 2;
+                    int x_sub = screen_x % 2;
+
+                    uint8_t temp = dst_row[x_byte];
+                    dst_row[x_byte] = (maskGLUT[x_sub] & temp) | (x_sub ? gray3 : (gray3 << 4));
+                }
+            }
+            else
+            {
+                uint8_t *dst_row = buffer1b + (width_bytes_1b * screen_y);
+
+                for (int32_t x = 0; x < w; x++)
+                {
+                    int32_t screen_x = area->x1 + x;
+                    if (screen_x >= E_INK_WIDTH)
+                        break;
+
+                    uint8_t gray = src_row[x];
+                    uint8_t bit = (gray < 128) ? 1 : 0;
+
+                    int x_byte = screen_x / 8;
+                    int x_sub = screen_x % 8;
+
+                    uint8_t temp = dst_row[x_byte];
+                    dst_row[x_byte] = (~maskLUT[x_sub] & temp) | (bit ? maskLUT[x_sub] : 0);
+                }
+            }
+        }
+    }
+
+    lv_display_flush_ready(disp);
 }

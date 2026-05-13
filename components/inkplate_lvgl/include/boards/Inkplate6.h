@@ -30,6 +30,8 @@
 
 #include "BoardCommon.h"
 #include "GraphicsDefs.h"
+#include "ditherAlgorithm.h"
+#include "lvgl.h"
 
 #include "PCAL.h"
 #include "RTC.h"
@@ -50,7 +52,7 @@ static const uint8_t waveform3Bit[8][9] = {
     {0, 0, 0, 0, 1, 1, 2, 0, 0}, {0, 0, 0, 0, 0, 0, 2, 0, 0}};
 #elif CONFIG_INKPLATE_BOARD_INKPLATE6FLICK
 #include "Frontlight.h"
-#include "Touchscreen.h"
+#include "TouchCypress.h"
 #define SD_PMOS_PIN IO_NUM_B5
 #define E_INK_WIDTH 1024
 #define E_INK_HEIGHT 758
@@ -68,6 +70,8 @@ static const uint8_t waveform3Bit[8][9] = {
     {1, 2, 1, 1, 2, 2, 1, 2, 0}, {0, 0, 0, 0, 0, 0, 0, 2, 0}};
 #endif
 
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+
 /**
  * @brief Class for Inkplate 6.
  *
@@ -78,7 +82,14 @@ public:
    * @brief Construct a new Inkplate 6 object
    *
    */
-  Inkplate6();
+  Inkplate6(lv_display_render_mode_t mode = LV_DISPLAY_RENDER_MODE_FULL);
+
+  lv_display_t *getDisplay() { return m_disp; }
+
+  void enableDithering(bool state) { m_ditherEnabled = state; }
+
+  bool m_ditherEnabled = false;
+  DitherAlgorithm m_dither;
 
   /**
    * @brief Send only the changed pixels to the display (1-bit mode only).
@@ -169,4 +180,9 @@ private:
   uint8_t *m_glut = nullptr;
   uint8_t *m_glut2 = nullptr;
   uint32_t *m_pinLUT = nullptr;
+
+  uint8_t *m_lvglBuf = nullptr;
+  lv_display_t *m_disp = nullptr;
+
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 };
