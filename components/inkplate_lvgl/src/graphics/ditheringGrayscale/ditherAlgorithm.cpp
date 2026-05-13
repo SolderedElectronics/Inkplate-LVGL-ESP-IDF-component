@@ -12,6 +12,8 @@
 #include "ditherAlgorithm.h"
 #include "BoardBase.h"
 #include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) && !defined(CONFIG_INKPLATE_BOARD_INKPLATE2) && \
     !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
@@ -69,6 +71,7 @@ void DitherAlgorithm::ditherFramebuffer(uint8_t *frameBuffer, int width, int hei
 
     for (int y = 0; y < height; y++)
     {
+        if ((y & 7) == 0) vTaskDelay(1);
         memset(errNext, 0, width * sizeof(int16_t));
 
         // Alternate scan direction each row for serpentine dithering

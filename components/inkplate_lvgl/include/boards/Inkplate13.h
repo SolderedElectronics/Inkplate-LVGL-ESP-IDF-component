@@ -28,10 +28,14 @@
 
 #include "BoardCommon.h"
 #include "GraphicsDefs.h"
+#include "ditherAlgorithm.h"
+#include "lvgl.h"
 
 #include "PCAL.h"
 #include "RTC.h"
 #include "SPI.h"
+
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 
 #define IO_INT_ADDR 0x20
 
@@ -131,14 +135,20 @@ public:
    * @brief Construct a new Inkplate 13 object.
    *
    */
-  Inkplate13();
+  Inkplate13(lv_display_render_mode_t mode = LV_DISPLAY_RENDER_MODE_FULL);
+
+  lv_display_t *getDisplay() { return m_disp; }
+
+  void enableDithering(bool state) { m_ditherEnabled = state; }
+  bool m_ditherEnabled = false;
+  DitherAlgorithm m_dither;
 
   // not used
   uint32_t partialUpdate(bool forced = false, bool leaveOn = false) {
     return 0;
   };
-  esp_err_t einkOn() { return ESP_OK };
-  esp_err_t einkOff() { return ESP_OK };
+  esp_err_t einkOn() { return ESP_OK; }
+  esp_err_t einkOff() { return ESP_OK; }
 
   RTC rtc;
 
@@ -219,6 +229,9 @@ private:
   void pinsZstate() { return; };
 
   SPI m_spi;
-};
 
-#endif
+  uint8_t *m_lvglBuf = nullptr;
+  lv_display_t *m_disp = nullptr;
+
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+};

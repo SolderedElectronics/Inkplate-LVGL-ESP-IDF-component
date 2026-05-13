@@ -207,6 +207,7 @@ void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
   } else {
     // Direct threshold conversion from RGB565 (always set via lv_display_set_color_format)
     for (int32_t y = 0; y < h; y++) {
+      if ((y & 7) == 0) vTaskDelay(1);
       const uint8_t *row = px_map + (size_t)y * w * 2;
       for (int32_t x = 0; x < w; x++) {
         const uint8_t *p = row + x * 2;

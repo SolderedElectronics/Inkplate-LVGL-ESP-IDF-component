@@ -19,6 +19,8 @@
 #include "esp_heap_caps.h"
 #include <cstring>
 #include <cmath>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 /**
  * @brief   Unpack an RGB565 word into R (0–31), G (0–63), B (0–31) channel values.
@@ -362,6 +364,7 @@ void DitherAlgorithm::ditherFramebuffer(uint8_t *frameBuffer, int width, int hei
 
     for (int y = 0; y < height; y++)
     {
+        if ((y & 7) == 0) vTaskDelay(1);
         memset(errNextR, 0, width * sizeof(int16_t));
         memset(errNextG, 0, width * sizeof(int16_t));
         memset(errNextB, 0, width * sizeof(int16_t));

@@ -617,6 +617,7 @@ void IRAM_ATTR display_flush_callback(lv_display_t *disp, const lv_area_t *area,
 
         for (int32_t y = 0; y < h; y++)
         {
+            if ((y & 7) == 0) vTaskDelay(1);
             int32_t screen_y = area->y1 + y;
             const uint8_t *src_row = px_map + (y * w);
 

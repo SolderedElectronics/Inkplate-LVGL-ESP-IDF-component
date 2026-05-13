@@ -31,5 +31,7 @@ Inkplate::Inkplate(lv_display_render_mode_t mode) : INKPLATE_BOARD_CLASS(mode) {
   setRotation(2);
 #elif defined(CONFIG_INKPLATE_BOARD_INKPLATE4)
   setRotation(1);
+#elif defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+  setRotation(3);
 #endif
 }

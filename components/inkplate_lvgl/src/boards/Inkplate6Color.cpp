@@ -319,6 +319,7 @@ void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *
         };
 
         for (int32_t y = 0; y < h; y++) {
+            if ((y & 7) == 0) vTaskDelay(1);
             const uint8_t *row = px_map + (size_t)y * w * 2;
             for (int32_t x = 0; x < w; x++) {
                 uint16_t pixel = row[x * 2] | ((uint16_t)row[x * 2 + 1] << 8);
