@@ -1,49 +1,48 @@
 #include "Inkplate.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <cstring>
+
+#define IMAGE_URL "https://raw.githubusercontent.com/SolderedElectronics/Inkplate-LVGL-Library/refs/heads/dev/examples/Inkplate10/Advanced/SD/ImageFromSD/cat.jpg"
 
 static const char *TAG = "MAIN";
 
-static lv_obj_t *make_rect(lv_obj_t *parent, int x, int y, int w, int h, lv_color_t color) {
-    lv_obj_t *obj = lv_obj_create(parent);
-    lv_obj_remove_style_all(obj);
-    lv_obj_set_pos(obj, x, y);
-    lv_obj_set_size(obj, w, h);
-    lv_obj_set_style_bg_color(obj, color, 0);
-    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
-    return obj;
-}
-
-extern "C" void app_main(void) {
+extern "C" void app_main(void)
+{
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
     display.enableDithering(true);
+
+    display.wifi.begin();
+    if (!display.wifi.waitForConnect(15000)) {
+        ESP_LOGE(TAG, "WiFi connection timed out");
+        return;
+    }
+    ESP_LOGI(TAG, "WiFi connected");
+
+    display.wifi.setCurrentTime();
+
+    int32_t len = 0;
+    uint8_t *imgData = display.wifi.downloadFileHTTPS(IMAGE_URL, &len);
+    if (!imgData || len <= 0) {
+        ESP_LOGE(TAG, "Image download failed");
+        return;
+    }
+    ESP_LOGI(TAG, "Downloaded %ld bytes", (long)len);
+
+    lv_fs_path_ex_t path;
+    lv_fs_make_path_from_buffer(&path, 'M', imgData, (uint32_t)len, "jpg");
 
     lv_obj_t *screen = lv_scr_act();
     lv_obj_remove_style_all(screen);
     lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
-    // Full refresh: white bg + black rectangle
-    make_rect(screen, 100, 100, 600, 400, lv_color_black());
+    lv_obj_t *img = lv_image_create(screen);
+    lv_image_set_src(img, (const char *)&path);
+    lv_obj_center(img);
 
     lv_refr_now(lv_display_get_default());
     display.display();
-    ESP_LOGI(TAG, "Full update done");
+    ESP_LOGI(TAG, "Display updated");
 
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    // Partial update: red box + label inside the black rect
-    lv_obj_t *box = make_rect(screen, 150, 150, 300, 200, lv_color_make(255, 0, 0));
-
-    lv_obj_t *label = lv_label_create(box);
-    lv_obj_remove_style_all(label);
-    lv_label_set_text(label, "Partial!");
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
-    lv_obj_center(label);
-
-    lv_refr_now(lv_display_get_default());
-    display.displayPartial(150, 150, 300, 200);
-    ESP_LOGI(TAG, "Partial update done");
+    free(imgData);
 }
