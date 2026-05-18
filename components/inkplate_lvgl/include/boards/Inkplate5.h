@@ -36,7 +36,8 @@
 #include "PCAL.h"
 #include "RTC.h"
 
-void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                            uint8_t *px_map);
 
 extern PCAL expander1;
 
@@ -160,5 +161,6 @@ private:
   uint8_t *m_lvglBuf = nullptr;
   lv_display_t *m_disp = nullptr;
 
-  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                                     uint8_t *px_map);
 };

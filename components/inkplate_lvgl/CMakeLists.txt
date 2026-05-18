@@ -61,6 +61,7 @@ idf_component_register(SRCS "src/features/WiFi.cpp" "src/features/SPI.cpp"
                        INCLUDE_DIRS "include"
                                     "include/features"
                                     "include/boards"
+                                    "include/graphics"
                                     ${DITHER_INCLUDES}
                                     "src/lvgl"
                                     "src/lvgl/src"
@@ -82,6 +83,7 @@ idf_component_register(SRCS "src/features/I2C.cpp" "src/features/RTC.cpp" "src/f
                        INCLUDE_DIRS "include"
                                     "include/features"
                                     "include/boards"
+                                    "include/graphics"
                                     ${DITHER_INCLUDES}
                                     ${SENSOR_INCLUDES}
                                     "src/lvgl"

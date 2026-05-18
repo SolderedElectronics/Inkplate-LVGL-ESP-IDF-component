@@ -98,7 +98,8 @@ static const uint8_t *const waveformList[5] = {
     &waveform1[0][0], &waveform2[0][0], &waveform3[0][0], &waveform4[0][0],
     &waveform5[0][0]};
 
-void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                            uint8_t *px_map);
 
 /**
  * @brief Class for Inkplate 10.
@@ -258,5 +259,6 @@ private:
   uint8_t *m_lvglBuf = nullptr;
   lv_display_t *m_disp = nullptr;
 
-  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                                     uint8_t *px_map);
 };

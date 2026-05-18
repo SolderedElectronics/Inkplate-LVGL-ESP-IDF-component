@@ -1,0 +1,36 @@
+name: Format Check
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: pip install clang-format==22.1.4
+
+      - name: Apply formatting
+        run: |
+          find components/inkplate_lvgl/src components/inkplate_lvgl/include \
+               \( -name "*.cpp" -o -name "*.h" -o -name "*.c" \) \
+               ! -path "*/lvgl/*" \
+               -print0 | xargs -0 clang-format -i
+
+      - name: Check for differences
+        run: |
+          git diff --exit-code || (
+            echo ""
+            echo "The following files need formatting:"
+            git diff --name-only
+            exit 1
+          )

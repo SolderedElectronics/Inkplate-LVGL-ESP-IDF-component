@@ -24,10 +24,10 @@
 #include "driver/gpio.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
 #include "soc/gpio_sig_map.h"
 #include "soc/i2s_struct.h"
 #include "string.h"
-#include "freertos/FreeRTOS.h"
 
 #include "Inkplate6Color.h"
 #include "TPS.h"
@@ -96,9 +96,8 @@ Inkplate6Color::Inkplate6Color(lv_display_render_mode_t mode)
       0xFBE0, // ORANGE
   };
   static uint8_t paletteIndices6c[7] = {
-      INKPLATE_BLACK, INKPLATE_WHITE, INKPLATE_GREEN,
-      INKPLATE_BLUE,  INKPLATE_RED,   INKPLATE_YELLOW,
-      INKPLATE_ORANGE,
+      INKPLATE_BLACK, INKPLATE_WHITE,  INKPLATE_GREEN,  INKPLATE_BLUE,
+      INKPLATE_RED,   INKPLATE_YELLOW, INKPLATE_ORANGE,
   };
   m_dither.begin(palette6c, paletteIndices6c, 7, this);
 
@@ -299,48 +298,53 @@ void Inkplate6Color::setIOExpanderForLowPower() {
   expander1.setLevel(IO_NUM_B7, 0);
 }
 
-void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
-{
-    Inkplate6Color *self = static_cast<Inkplate6Color *>(lv_display_get_user_data(disp));
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                            uint8_t *px_map) {
+  Inkplate6Color *self =
+      static_cast<Inkplate6Color *>(lv_display_get_user_data(disp));
 
-    int32_t w = lv_area_get_width(area);
-    int32_t h = lv_area_get_height(area);
+  int32_t w = lv_area_get_width(area);
+  int32_t h = lv_area_get_height(area);
 
-    if (self->m_ditherEnabled) {
-        self->m_dither.ditherFramebuffer(px_map, w, h);
-    } else {
-        static const uint16_t pal[7] = {
-            0x0000, 0xFFFF, 0x0400, 0x000F, 0x8800, 0xFFE0, 0xFC60,
-        };
-        static const uint8_t palIdx[7] = {
-            INKPLATE_BLACK, INKPLATE_WHITE, INKPLATE_GREEN,
-            INKPLATE_BLUE,  INKPLATE_RED,   INKPLATE_YELLOW,
-            INKPLATE_ORANGE,
-        };
+  if (self->m_ditherEnabled) {
+    self->m_dither.ditherFramebuffer(px_map, w, h);
+  } else {
+    static const uint16_t pal[7] = {
+        0x0000, 0xFFFF, 0x0400, 0x000F, 0x8800, 0xFFE0, 0xFC60,
+    };
+    static const uint8_t palIdx[7] = {
+        INKPLATE_BLACK, INKPLATE_WHITE,  INKPLATE_GREEN,  INKPLATE_BLUE,
+        INKPLATE_RED,   INKPLATE_YELLOW, INKPLATE_ORANGE,
+    };
 
-        for (int32_t y = 0; y < h; y++) {
-            if ((y & 7) == 0) vTaskDelay(1);
-            const uint8_t *row = px_map + (size_t)y * w * 2;
-            for (int32_t x = 0; x < w; x++) {
-                uint16_t pixel = row[x * 2] | ((uint16_t)row[x * 2 + 1] << 8);
-                int r5 = (pixel >> 11) & 0x1F;
-                int g6 = (pixel >> 5)  & 0x3F;
-                int b5 =  pixel        & 0x1F;
+    for (int32_t y = 0; y < h; y++) {
+      if ((y & 7) == 0)
+        vTaskDelay(1);
+      const uint8_t *row = px_map + (size_t)y * w * 2;
+      for (int32_t x = 0; x < w; x++) {
+        uint16_t pixel = row[x * 2] | ((uint16_t)row[x * 2 + 1] << 8);
+        int r5 = (pixel >> 11) & 0x1F;
+        int g6 = (pixel >> 5) & 0x3F;
+        int b5 = pixel & 0x1F;
 
-                uint64_t minDist = UINT64_MAX;
-                uint8_t best = INKPLATE_BLACK;
-                for (int i = 0; i < 7; i++) {
-                    int pr = (pal[i] >> 11) & 0x1F;
-                    int pg = (pal[i] >> 5)  & 0x3F;
-                    int pb =  pal[i]        & 0x1F;
-                    int dr = r5 - pr, dg = g6 - pg, db = b5 - pb;
-                    uint64_t d = (uint64_t)(dr*dr)*30 + (uint64_t)(dg*dg)*59 + (uint64_t)(db*db)*11;
-                    if (d < minDist) { minDist = d; best = palIdx[i]; }
-                }
-                self->writePixelInternal(area->x1 + x, area->y1 + y, best);
-            }
+        uint64_t minDist = UINT64_MAX;
+        uint8_t best = INKPLATE_BLACK;
+        for (int i = 0; i < 7; i++) {
+          int pr = (pal[i] >> 11) & 0x1F;
+          int pg = (pal[i] >> 5) & 0x3F;
+          int pb = pal[i] & 0x1F;
+          int dr = r5 - pr, dg = g6 - pg, db = b5 - pb;
+          uint64_t d = (uint64_t)(dr * dr) * 30 + (uint64_t)(dg * dg) * 59 +
+                       (uint64_t)(db * db) * 11;
+          if (d < minDist) {
+            minDist = d;
+            best = palIdx[i];
+          }
         }
+        self->writePixelInternal(area->x1 + x, area->y1 + y, best);
+      }
     }
+  }
 
-    lv_display_flush_ready(disp);
+  lv_display_flush_ready(disp);
 }

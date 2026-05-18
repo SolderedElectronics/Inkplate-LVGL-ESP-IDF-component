@@ -256,8 +256,8 @@ void Inkplate13::setPanelPinsToLow() {
   }
 }
 
-esp_err_t Inkplate13::displayPartial(int16_t x, int16_t y, int16_t w,
-                                     int16_t h, bool leaveOn) {
+esp_err_t Inkplate13::displayPartial(int16_t x, int16_t y, int16_t w, int16_t h,
+                                     bool leaveOn) {
   uint8_t rot = getRotation();
   int16_t logW =
       (rot == 1 || rot == 3) ? (int16_t)E_INK_HEIGHT : (int16_t)E_INK_WIDTH;
@@ -494,99 +494,99 @@ void Inkplate13::screenInit() {
                   sizeof(SPECTRA133_REGISTER_TFT_VCOM_POWER_V), eChipIdMaster);
 }
 
-void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
-{
-    Inkplate13 *self = static_cast<Inkplate13 *>(lv_display_get_user_data(disp));
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                            uint8_t *px_map) {
+  Inkplate13 *self = static_cast<Inkplate13 *>(lv_display_get_user_data(disp));
 
-    int32_t w = lv_area_get_width(area);
-    int32_t h = lv_area_get_height(area);
+  int32_t w = lv_area_get_width(area);
+  int32_t h = lv_area_get_height(area);
 
-    if (self->m_ditherEnabled && lv_display_get_render_mode(disp) == LV_DISPLAY_RENDER_MODE_FULL)
-    {
-        // dither call uses logical LVGL dims: width=E_INK_HEIGHT, height=E_INK_WIDTH.
-        // writePixelInternal (rotation=3) maps each logical pixel to the physical buffer.
-        self->m_dither.ditherFramebuffer(px_map, E_INK_HEIGHT, E_INK_WIDTH);
-    }
-    else
-    {
-        uint8_t *buffer3b = self->m_framebufferColor;
-        const int width_bytes_3b = E_INK_WIDTH / 2;
-        const uint8_t *maskGLUT = pixelMaskGLUT;
+  if (self->m_ditherEnabled &&
+      lv_display_get_render_mode(disp) == LV_DISPLAY_RENDER_MODE_FULL) {
+    // dither call uses logical LVGL dims: width=E_INK_HEIGHT,
+    // height=E_INK_WIDTH. writePixelInternal (rotation=3) maps each logical
+    // pixel to the physical buffer.
+    self->m_dither.ditherFramebuffer(px_map, E_INK_HEIGHT, E_INK_WIDTH);
+  } else {
+    uint8_t *buffer3b = self->m_framebufferColor;
+    const int width_bytes_3b = E_INK_WIDTH / 2;
+    const uint8_t *maskGLUT = pixelMaskGLUT;
 
-        for (int32_t y = 0; y < h; y++)
-        {
-            if ((y & 7) == 0) vTaskDelay(1);
+    for (int32_t y = 0; y < h; y++) {
+      if ((y & 7) == 0)
+        vTaskDelay(1);
 
-            const uint8_t *src_row = px_map + (size_t)y * w * 2;
+      const uint8_t *src_row = px_map + (size_t)y * w * 2;
 
-            for (int32_t x = 0; x < w; x++)
-            {
-                uint8_t lo = src_row[2 * x + 0];
-                uint8_t hi = src_row[2 * x + 1];
-                uint16_t pixel = (uint16_t)hi << 8 | lo;
+      for (int32_t x = 0; x < w; x++) {
+        uint8_t lo = src_row[2 * x + 0];
+        uint8_t hi = src_row[2 * x + 1];
+        uint16_t pixel = (uint16_t)hi << 8 | lo;
 
-                // Extract RGB565 components and scale to 0-255
-                uint8_t r5 = (pixel >> 11) & 0x1F;
-                uint8_t g6 = (pixel >> 5)  & 0x3F;
-                uint8_t b5 =  pixel        & 0x1F;
+        // Extract RGB565 components and scale to 0-255
+        uint8_t r5 = (pixel >> 11) & 0x1F;
+        uint8_t g6 = (pixel >> 5) & 0x3F;
+        uint8_t b5 = pixel & 0x1F;
 
-                int R = (r5 * 527 + 23) >> 6;
-                int G = (g6 * 259 + 33) >> 6;
-                int B = (b5 * 527 + 23) >> 6;
+        int R = (r5 * 527 + 23) >> 6;
+        int G = (g6 * 259 + 33) >> 6;
+        int B = (b5 * 527 + 23) >> 6;
 
-                // Convert to HSV
-                float rf = R / 255.0f;
-                float gf = G / 255.0f;
-                float bf = B / 255.0f;
+        // Convert to HSV
+        float rf = R / 255.0f;
+        float gf = G / 255.0f;
+        float bf = B / 255.0f;
 
-                float maxc = std::max(rf, std::max(gf, bf));
-                float minc = std::min(rf, std::min(gf, bf));
-                float delta = maxc - minc;
+        float maxc = std::max(rf, std::max(gf, bf));
+        float minc = std::min(rf, std::min(gf, bf));
+        float delta = maxc - minc;
 
-                float H = 0.0f;
-                float S = (maxc == 0.0f) ? 0.0f : (delta / maxc);
-                float V = maxc;
+        float H = 0.0f;
+        float S = (maxc == 0.0f) ? 0.0f : (delta / maxc);
+        float V = maxc;
 
-                if (delta > 0.0001f)
-                {
-                    if (maxc == rf)
-                        H = 60.0f * std::fmod(((gf - bf) / delta), 6.0f);
-                    else if (maxc == gf)
-                        H = 60.0f * (((bf - rf) / delta) + 2.0f);
-                    else
-                        H = 60.0f * (((rf - gf) / delta) + 4.0f);
-                }
-                if (H < 0.0f)
-                    H += 360.0f;
-
-                // Map to Inkplate 13 6-color palette via HSV classification
-                uint8_t color;
-                if (S < 0.18f)
-                {
-                    color = (V < 0.4f) ? INKPLATE_BLACK : INKPLATE_WHITE;
-                }
-                else
-                {
-                    if      (H >= 200.0f && H < 245.0f) color = INKPLATE_BLUE;
-                    else if (H >=  90.0f && H < 150.0f) color = INKPLATE_GREEN;
-                    else if (H >=  45.0f && H <  90.0f) color = INKPLATE_YELLOW;
-                    else                                 color = INKPLATE_RED;
-                }
-
-                // Apply rotation: logical (sx, sy) → physical (fx=sy, fy=E_INK_HEIGHT-sx-1)
-                int32_t sx = area->x1 + x;
-                int32_t sy = area->y1 + y;
-                int32_t fx = sy;
-                int32_t fy = E_INK_HEIGHT - sx - 1;
-
-                int x_byte = fx / 2;
-                int x_sub  = fx % 2;
-                uint8_t *dst_row = buffer3b + (width_bytes_3b * fy);
-                uint8_t prev = dst_row[x_byte];
-                dst_row[x_byte] = (maskGLUT[x_sub] & prev) | (x_sub ? color : (color << 4));
-            }
+        if (delta > 0.0001f) {
+          if (maxc == rf)
+            H = 60.0f * std::fmod(((gf - bf) / delta), 6.0f);
+          else if (maxc == gf)
+            H = 60.0f * (((bf - rf) / delta) + 2.0f);
+          else
+            H = 60.0f * (((rf - gf) / delta) + 4.0f);
         }
-    }
+        if (H < 0.0f)
+          H += 360.0f;
 
-    lv_display_flush_ready(disp);
+        // Map to Inkplate 13 6-color palette via HSV classification
+        uint8_t color;
+        if (S < 0.18f) {
+          color = (V < 0.4f) ? INKPLATE_BLACK : INKPLATE_WHITE;
+        } else {
+          if (H >= 200.0f && H < 245.0f)
+            color = INKPLATE_BLUE;
+          else if (H >= 90.0f && H < 150.0f)
+            color = INKPLATE_GREEN;
+          else if (H >= 45.0f && H < 90.0f)
+            color = INKPLATE_YELLOW;
+          else
+            color = INKPLATE_RED;
+        }
+
+        // Apply rotation: logical (sx, sy) → physical (fx=sy,
+        // fy=E_INK_HEIGHT-sx-1)
+        int32_t sx = area->x1 + x;
+        int32_t sy = area->y1 + y;
+        int32_t fx = sy;
+        int32_t fy = E_INK_HEIGHT - sx - 1;
+
+        int x_byte = fx / 2;
+        int x_sub = fx % 2;
+        uint8_t *dst_row = buffer3b + (width_bytes_3b * fy);
+        uint8_t prev = dst_row[x_byte];
+        dst_row[x_byte] =
+            (maskGLUT[x_sub] & prev) | (x_sub ? color : (color << 4));
+      }
+    }
+  }
+
+  lv_display_flush_ready(disp);
 }

@@ -186,7 +186,8 @@ private:
    */
   bool setPanelDeepSleep(bool state);
 
-  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                                     uint8_t *px_map);
 
   SPI m_spi;
   uint8_t *m_lvglBuf = nullptr;

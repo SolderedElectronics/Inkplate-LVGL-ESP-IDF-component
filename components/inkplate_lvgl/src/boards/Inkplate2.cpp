@@ -26,8 +26,8 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
-#include "string.h"
 #include "lvgl.h"
+#include "string.h"
 
 static const char *TAG = "Inkplate2";
 
@@ -35,7 +35,8 @@ static const char *TAG = "Inkplate2";
 /*                              Public functions                              */
 /* -------------------------------------------------------------------------- */
 
-Inkplate2::Inkplate2(lv_display_render_mode_t mode) : m_spi(EPAPER_DIN, EPAPER_CLK) {
+Inkplate2::Inkplate2(lv_display_render_mode_t mode)
+    : m_spi(EPAPER_DIN, EPAPER_CLK) {
   setRotation(3);
 
   m_framebufferColor = (uint8_t *)heap_caps_malloc(
@@ -77,7 +78,8 @@ Inkplate2::Inkplate2(lv_display_render_mode_t mode) : m_spi(EPAPER_DIN, EPAPER_C
 
   // Inkplate 2 palette: Black, White, Red in RGB565
   static uint16_t palette[3] = {0x0000, 0xFFFF, 0xF800};
-  static uint8_t paletteIndices[3] = {INKPLATE2_BLACK, INKPLATE2_WHITE, INKPLATE2_RED};
+  static uint8_t paletteIndices[3] = {INKPLATE2_BLACK, INKPLATE2_WHITE,
+                                      INKPLATE2_RED};
   m_dither.begin(palette, paletteIndices, 3, this);
 }
 
@@ -205,9 +207,11 @@ void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
   if (self->m_ditherEnabled) {
     self->m_dither.ditherFramebuffer(px_map, w, h);
   } else {
-    // Direct threshold conversion from RGB565 (always set via lv_display_set_color_format)
+    // Direct threshold conversion from RGB565 (always set via
+    // lv_display_set_color_format)
     for (int32_t y = 0; y < h; y++) {
-      if ((y & 7) == 0) vTaskDelay(1);
+      if ((y & 7) == 0)
+        vTaskDelay(1);
       const uint8_t *row = px_map + (size_t)y * w * 2;
       for (int32_t x = 0; x < w; x++) {
         const uint8_t *p = row + x * 2;

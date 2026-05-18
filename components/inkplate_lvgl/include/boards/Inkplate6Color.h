@@ -37,7 +37,8 @@
 #include "SPI.h"
 #include "ditherAlgorithm.h"
 
-void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                            uint8_t *px_map);
 
 #define IO_INT_ADDR 0x20
 
@@ -213,5 +214,6 @@ private:
   lv_display_t *m_disp = nullptr;
   DitherAlgorithm m_dither;
 
-  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                                     uint8_t *px_map);
 };

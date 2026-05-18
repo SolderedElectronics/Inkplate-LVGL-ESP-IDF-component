@@ -61,7 +61,8 @@ static const uint8_t waveform3Bit[8][9] = {
     {2, 1, 1, 2, 1, 1, 2, 0}, {1, 2, 1, 1, 2, 1, 2, 0},
     {1, 1, 1, 2, 1, 2, 2, 0}, {0, 0, 0, 0, 0, 2, 2, 0}};
 
-void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                            uint8_t *px_map);
 
 /**
  * @brief Class for Inkplate 4.
@@ -185,5 +186,6 @@ private:
   uint8_t *m_lvglBuf = nullptr;
   lv_display_t *m_disp = nullptr;
 
-  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
+  friend void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
+                                     uint8_t *px_map);
 };
