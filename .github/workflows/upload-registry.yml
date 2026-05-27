@@ -1,0 +1,21 @@
+name: Upload Component to Registry
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload component to ESP Registry
+        uses: espressif/upload-components-ci-action@v2
+        with:
+          components: "inkplate_lvgl: components/inkplate_lvgl"
+          namespace: solderedelectronics
