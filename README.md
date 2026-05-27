@@ -1,5 +1,6 @@
 # Inkplate LVGL ESP-IDF component
 
+[![Build Examples](https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component/actions/workflows/build-examples.yml/badge.svg)](https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component/actions/workflows/build-examples.yml)
 [![Format Check](https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component/actions/workflows/format-check.yml/badge.svg)](https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component/actions/workflows/format-check.yml)
 
 <p align="center">
@@ -104,14 +105,17 @@ In order to get a head start with Inkplate (any), follow these steps:
    git clone https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component.git
    ```
 
-4. **Add the component to your project.** In your project's root `CMakeLists.txt`, point `EXTRA_COMPONENT_DIRS` at the cloned repo so ESP-IDF can find the `inkplate` component:
+4. **Add the component to your project** via the IDF Component Manager:
+   ```
+   idf.py add-dependency "solderedelectronics/inkplate_lvgl>=1.0.0"
+   ```
+   Alternatively, clone this repo and point `EXTRA_COMPONENT_DIRS` at it in your project's root `CMakeLists.txt`:
    ```cmake
    cmake_minimum_required(VERSION 3.16)
    set(EXTRA_COMPONENT_DIRS "/path/to/Inkplate-LVGL-ESP-IDF-component/components")
    include($ENV{IDF_PATH}/tools/cmake/project.cmake)
    project(your_project_name)
    ```
-   > **IDF Component Manager:** The component is not yet published to the IDF Component Registry. Until it is, use the `EXTRA_COMPONENT_DIRS` method above.
 
 5. **Register the component** in your `main/CMakeLists.txt`:
    ```cmake
@@ -133,7 +137,7 @@ In order to get a head start with Inkplate (any), follow these steps:
 
 ### Code examples
 
-This is currently a work in progress, although, some examples are available in `examples` folder.
+Basic hello world examples are available for all supported boards in `components/inkplate_lvgl/examples/`. They are also available on the [component registry page](https://components.espressif.com/components/solderedelectronics/inkplate_lvgl).
 
 ### Documentation
 

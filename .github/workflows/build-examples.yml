@@ -1,0 +1,120 @@
+name: Build Examples
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    name: ${{ matrix.board.name }}
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.0.1
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - name: inkplate2
+            target: esp32
+          - name: inkplate4
+            target: esp32
+          - name: inkplate5
+            target: esp32
+          - name: inkplate6
+            target: esp32
+          - name: inkplate6color
+            target: esp32
+          - name: inkplate6flick
+            target: esp32
+          - name: inkplate10
+            target: esp32
+          - name: inkplate13
+            target: esp32s3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.board.name }} examples
+        shell: bash
+        run: |
+          . $IDF_PATH/export.sh
+
+          TARGET="${{ matrix.board.target }}"
+          PROJ_DIR="/tmp/ci_project"
+
+          # ── Create a single reusable project ────────────────────────────────
+          mkdir -p "$PROJ_DIR/main"
+
+          # Point EXTRA_COMPONENT_DIRS at components/ so ESP-IDF finds inkplate_lvgl without
+          # scanning the repo root CMakeLists.txt (which is a project file, not a component)
+          cat > "$PROJ_DIR/CMakeLists.txt" << EOF
+          cmake_minimum_required(VERSION 3.16)
+          set(EXTRA_COMPONENT_DIRS "$GITHUB_WORKSPACE/components")
+          include(\$ENV{IDF_PATH}/tools/cmake/project.cmake)
+          project(inkplate_ci)
+          EOF
+
+          # Fat CMakeLists — covers every REQUIRES variant found across all examples
+          cat > "$PROJ_DIR/main/CMakeLists.txt" << 'EOF'
+          idf_component_register(SRCS "main.cpp"
+                                 REQUIRES "inkplate_lvgl" "esp_wifi" "esp_http_server"
+                                 INCLUDE_DIRS ".")
+          EOF
+
+          # Use the board's hello_world sdkconfig.defaults — already contains board
+          # selection and correct SPIRAM config (inkplate13 gets CONFIG_SPIRAM_MODE_OCT=y)
+          cp "$GITHUB_WORKSPACE/components/inkplate_lvgl/examples/${{ matrix.board.name }}/basic/hello_world/sdkconfig.defaults" \
+             "$PROJ_DIR/sdkconfig.defaults"
+
+          # Minimal stub so the initial build has something to compile
+          echo 'extern "C" void app_main() {}' > "$PROJ_DIR/main/main.cpp"
+
+          # ── Initial full build — compiles the inkplate_lvgl component once ──
+          echo "::group::initial build (${{ matrix.board.name }})"
+          cd "$PROJ_DIR"
+          idf.py set-target "$TARGET"
+          idf.py build
+          echo "::endgroup::"
+
+          # ── Incremental builds — only main.cpp is swapped each time ─────────
+          FAIL=0
+          FAILED_EXAMPLES=()
+
+          while IFS= read -r main_cpp; do
+            example_main_dir="$(dirname "$main_cpp")"
+            example_dir="$(dirname "$example_main_dir")"
+
+            echo "::group::$(basename "$example_dir")"
+            echo "Building: $example_dir"
+
+            # Remove files from the previous example (keep CMakeLists.txt)
+            find "$PROJ_DIR/main" ! -name "CMakeLists.txt" -type f -delete
+
+            # Copy all files from the example's main/ (headers, images, assets, etc.)
+            find "$example_main_dir" -maxdepth 1 -type f ! -name "CMakeLists.txt" \
+                 -exec cp {} "$PROJ_DIR/main/" \;
+
+            if (cd "$PROJ_DIR" && idf.py build); then
+              echo "::endgroup::"
+            else
+              echo "::endgroup::"
+              echo "::error::Failed to build $example_dir"
+              FAILED_EXAMPLES+=("$example_dir")
+              FAIL=1
+            fi
+
+          done < <(find "$GITHUB_WORKSPACE/components/inkplate_lvgl/examples/${{ matrix.board.name }}" \
+                        -path "*/main/main.cpp" | sort)
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo ""
+            echo "Failed examples:"
+            printf '  - %s\n' "${FAILED_EXAMPLES[@]}"
+            exit 1
+          fi

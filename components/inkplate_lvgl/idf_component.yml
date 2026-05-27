@@ -1,0 +1,10 @@
+version: "1.0.0"
+description: "Driver library for Inkplate family of e-paper boards with LVGL support (Inkplate2, 4, 5, 6, 6Color, 6Flick, 10, 13)"
+url: "https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component"
+repository: "https://github.com/SolderedElectronics/Inkplate-LVGL-ESP-IDF-component"
+license: "GPL-3.0-only"
+targets:
+  - esp32
+  - esp32s3
+dependencies:
+  idf: ">=6.0.0"
