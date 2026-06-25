@@ -28,6 +28,8 @@
 #include "driver/i2c_master.h"
 #include "esp_attr.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <string.h>
 
 #include "Touch.h"
@@ -52,7 +54,11 @@
 #define CYPRESS_TOUCH_LP_INTRVL_DFLT 0x0A
 #define CYPRESS_TOUCH_TCH_TMOUT_DFLT 0xFF
 
-#define CYPRESS_TOUCH_MAX_X 682
+// Empirically calibrated: raw sensor X range maps to screen Y after swapXY.
+// Hardware constant from datasheet is 682, but measured touch data on
+// Inkplate 6 Flick shows actual effective range ~800. Using 800 gives <5px
+// error across the screen height; using 682 causes ~20% Y overshoot.
+#define CYPRESS_TOUCH_MAX_X 800
 #define CYPRESS_TOUCH_MAX_Y 1023
 
 #define E_INK_WIDTH 1024
@@ -152,6 +158,17 @@ public:
    * @return true if unread touch data is available.
    */
   bool available() override;
+
+  /**
+   * @brief Returns the FreeRTOS binary semaphore given from the touch ISR.
+   *
+   * The semaphore is given on every GPIO interrupt (press and release).
+   * Use xSemaphoreTake() to block until a touch event, then call getData()
+   * immediately to read coordinates before the finger lifts.
+   *
+   * @return semaphore handle, or NULL if not initialised.
+   */
+  SemaphoreHandle_t getTouchSemaphore() const { return m_touchSemaphore; }
 
   /**
    * @brief Checks whether any active touch point falls within a given area.
@@ -348,4 +365,5 @@ private:
   uint16_t touchX[2], touchY[2];
   uint32_t touchT = 0;
   bool m_tsInitDone = false;
+  SemaphoreHandle_t m_touchSemaphore = NULL;
 };

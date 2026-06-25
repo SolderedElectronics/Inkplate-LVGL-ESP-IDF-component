@@ -42,6 +42,7 @@
 
 extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
+    display.frontlight.setState(false);
 
     lv_obj_t *screen = lv_scr_act();
     lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
