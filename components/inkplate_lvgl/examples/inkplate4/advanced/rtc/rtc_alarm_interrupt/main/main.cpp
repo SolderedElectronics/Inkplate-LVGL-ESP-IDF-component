@@ -1,0 +1,119 @@
+/**
+ * @file        main.cpp
+ * @author      Fran Fodor for Soldered
+ * @brief       RTC alarm interrupt example for Soldered Inkplate 4.
+ *
+ * @details     Sets an RTC alarm 60 seconds after a known epoch. The RTC INT
+ *              pin (GPIO 39) triggers a GPIO interrupt which sets a flag.
+ *              When the alarm fires the display shows "ALARM!".
+ *
+ * Requirements:
+ * - Board:      Soldered Inkplate 4
+ * - Framework:  ESP-IDF v6.x
+ * - Hardware:   Inkplate 4, USB cable, CR2032 battery (optional)
+ * - Extra:      None
+ *
+ * Configuration:
+ * - Menuconfig -> Inkplate Boards -> Inkplate4
+ *
+ * How to use:
+ * 1) Build and flash to Inkplate 4.
+ * 2) Display shows current time; "ALARM!" appears ~60 s after boot.
+ *
+ * Notes:
+ * - GPIO 39 is the RTC INT pin (active-low alarm output).
+ *
+ * Docs:         https://docs.soldered.com/inkplate
+ * Support:      https://forum.soldered.com/
+ */
+
+#include "sdkconfig.h"
+
+#ifndef CONFIG_INKPLATE_BOARD_INKPLATE4
+#error \
+    "Wrong board selection for this example, please select Inkplate4 in the boards menu."
+#endif
+
+#include "Inkplate.h"
+#include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include <time.h>
+
+static volatile bool alarmFlag = false;
+
+static void IRAM_ATTR alarmISR(void *arg) {
+    alarmFlag = true;
+}
+
+static const char *weekdayNames[] = {
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+static void updateLabels(Inkplate &display, lv_obj_t *timeLabel, lv_obj_t *alarmLabel) {
+    uint8_t hour    = display.rtc.getHour();
+    uint8_t minute  = display.rtc.getMinute();
+    uint8_t second  = display.rtc.getSecond();
+    uint8_t day     = display.rtc.getDay();
+    uint8_t weekday = display.rtc.getWeekday();
+    uint8_t month   = display.rtc.getMonth();
+    uint16_t year   = display.rtc.getYear();
+
+    char buf[128];
+    snprintf(buf, sizeof(buf), "%02d:%02d:%02d\n%s, %02d/%02d/%04d",
+             hour, minute, second, weekdayNames[weekday], day, month, year);
+    lv_label_set_text(timeLabel, buf);
+    lv_obj_align(timeLabel, LV_ALIGN_CENTER, 0, -30);
+
+    if (alarmFlag) {
+        alarmFlag = false;
+        display.rtc.clearAlarmFlag();
+        lv_label_set_text(alarmLabel, "ALARM!");
+    } else {
+        lv_label_set_text(alarmLabel, "");
+    }
+    lv_obj_align(alarmLabel, LV_ALIGN_CENTER, 0, 60);
+}
+
+extern "C" void app_main(void) {
+    Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
+    display.setDisplayMode(BLACK_AND_WHITE);
+
+    display.rtc.reset();
+
+    // Set RTC to a known epoch, alarm 60 s later
+    display.rtc.setTime((time_t)1762957188);
+    time_t epoch;
+    display.rtc.getTime(&epoch);
+    display.rtc.setAlarmEpoch(epoch + 60);
+
+    // Configure GPIO 39 as input with interrupt on falling edge (RTC INT active-low)
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << GPIO_NUM_39);
+    io_conf.mode         = GPIO_MODE_INPUT;
+    io_conf.pull_up_en   = GPIO_PULLUP_ENABLE;
+    io_conf.intr_type    = GPIO_INTR_NEGEDGE;
+    gpio_config(&io_conf);
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(GPIO_NUM_39, alarmISR, NULL);
+
+    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+
+    lv_obj_t *timeLabel = lv_label_create(lv_screen_active());
+    lv_obj_set_style_text_color(timeLabel, lv_color_hex(0x000000), LV_PART_MAIN);
+
+    lv_obj_t *alarmLabel = lv_label_create(lv_screen_active());
+    lv_obj_set_style_text_color(alarmLabel, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_label_set_text(alarmLabel, "");
+
+    updateLabels(display, timeLabel, alarmLabel);
+
+    lv_refr_now(lv_display_get_default());
+    display.display();
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(60000));
+        updateLabels(display, timeLabel, alarmLabel);
+        lv_refr_now(lv_display_get_default());
+        display.display();
+    }
+}

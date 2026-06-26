@@ -145,7 +145,7 @@ uint8_t *WiFi::downloadFile(const char *url, int32_t *len) {
     *len = contentLen;
 
   uint8_t *buffer = (uint8_t *)heap_caps_malloc(
-      contentLen, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+      contentLen + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!buffer) {
     ESP_LOGE(TAG, "Failed to allocate %ld bytes", contentLen);
     esp_http_client_cleanup(client);
@@ -205,7 +205,7 @@ uint8_t *WiFi::downloadFileHTTPS(const char *url, int32_t *len) {
     *len = contentLen;
 
   uint8_t *buffer = (uint8_t *)heap_caps_malloc(
-      contentLen, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+      contentLen + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!buffer) {
     ESP_LOGE(TAG, "Failed to allocate %ld bytes", contentLen);
     esp_http_client_cleanup(client);
