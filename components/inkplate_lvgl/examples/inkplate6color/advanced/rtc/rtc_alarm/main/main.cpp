@@ -34,12 +34,12 @@
 #include "Inkplate.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <time.h>
+
+static const char *wdayNames[] = {
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 static void updateTimeLabel(Inkplate &display, lv_obj_t *label, lv_obj_t *alarmLabel) {
-    display.rtc.getRtcData();
-
-    const char *wdayNames[] = {
-        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
     char timeText[128];
     snprintf(timeText, sizeof(timeText),
@@ -64,8 +64,17 @@ extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
     display.rtc.reset();
 
-    display.rtc.setTime(14, 30, 0);
-    display.rtc.setDate(3, 12, 11, 2025);
+    // Wednesday, 12 November 2025, 14:30:00
+    struct tm t = {};
+    t.tm_hour = 14;
+    t.tm_min  = 30;
+    t.tm_sec  = 0;
+    t.tm_mday = 12;
+    t.tm_wday = 3;
+    t.tm_mon  = 11;
+    t.tm_year = 2025;
+    display.rtc.setTime(t);
+
     display.rtc.setAlarm(0, 31, 14, 12, 3);
 
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0xFFFFFF), LV_PART_MAIN);

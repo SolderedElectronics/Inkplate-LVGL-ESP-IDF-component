@@ -40,17 +40,17 @@ extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_PARTIAL);
 
     for (int i = 0; i < 16; i++) {
-        display.expander1.pinMode(i, OUTPUT);
+        expander1.setDirection((IOPin_t)i, IO_MODE_OUTPUT);
     }
 
     while (1) {
         for (int i = 0; i < 16; i++) {
-            display.expander1.digitalWrite(i, LOW);
+            expander1.setLevel((IOPin_t)i, 0);
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
 
         for (int i = 0; i < 16; i++) {
-            display.expander1.digitalWrite(i, HIGH);
+            expander1.setLevel((IOPin_t)i, 1);
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
