@@ -73,6 +73,12 @@ jobs:
           cp "$GITHUB_WORKSPACE/components/inkplate_lvgl/examples/${{ matrix.board.name }}/basic/hello_world/sdkconfig.defaults" \
              "$PROJ_DIR/sdkconfig.defaults"
 
+          # Copy custom partitions.csv if hello_world provides one
+          if [ -f "$GITHUB_WORKSPACE/components/inkplate_lvgl/examples/${{ matrix.board.name }}/basic/hello_world/partitions.csv" ]; then
+              cp "$GITHUB_WORKSPACE/components/inkplate_lvgl/examples/${{ matrix.board.name }}/basic/hello_world/partitions.csv" \
+                 "$PROJ_DIR/partitions.csv"
+          fi
+
           # Minimal stub so the initial build has something to compile
           echo 'extern "C" void app_main() {}' > "$PROJ_DIR/main/main.cpp"
 
