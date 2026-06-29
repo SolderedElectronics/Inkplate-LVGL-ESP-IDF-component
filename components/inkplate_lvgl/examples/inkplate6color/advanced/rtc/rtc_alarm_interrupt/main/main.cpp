@@ -36,16 +36,16 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
-static volatile bool alarmFlag = false;
+#include <time.h>
 
 static void IRAM_ATTR alarmISR(void *arg) {
-    alarmFlag = true;
+    gpio_intr_disable(GPIO_NUM_39);
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR((TaskHandle_t)arg, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-static void updateTimeLabel(Inkplate &display, lv_obj_t *timeLabel, lv_obj_t *alarmLabel) {
-    display.rtc.getRtcData();
-
+static void updateTimeLabel(Inkplate &display, lv_obj_t *timeLabel) {
     const char *wdayNames[] = {
         "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
@@ -58,33 +58,38 @@ static void updateTimeLabel(Inkplate &display, lv_obj_t *timeLabel, lv_obj_t *al
 
     lv_label_set_text(timeLabel, timeText);
     lv_obj_align(timeLabel, LV_ALIGN_CENTER, 0, -30);
-
-    if (alarmFlag) {
-        alarmFlag = false;
-        display.rtc.clearAlarmFlag();
-        lv_label_set_text(alarmLabel, "ALARM!");
-    } else {
-        lv_label_set_text(alarmLabel, "");
-    }
-    lv_obj_align(alarmLabel, LV_ALIGN_CENTER, 0, 60);
 }
 
 extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
     display.rtc.reset();
 
-    display.rtc.setEpoch(1762957188);
-    display.rtc.setAlarmEpoch(display.rtc.getEpoch() + 60, RTC_ALARM_MATCH_DHHMMSS);
+    // Wednesday, 12 November 2025, 14:30:00
+    struct tm t = {};
+    t.tm_hour = 14;
+    t.tm_min  = 30;
+    t.tm_sec  = 0;
+    t.tm_mday = 12;
+    t.tm_wday = 3;    // Wednesday (0=Sun)
+    t.tm_mon  = 11;   // November (1-12)
+    t.tm_year = 2025;
+    display.rtc.setTime(t);
 
-    // Configure RTC INT pin and attach interrupt
+    // Alarm at 14:31:00 — match only on hour/min/sec, not day/weekday
+    display.rtc.setAlarm(0, 31, 14);
+
+    TaskHandle_t mainTask = xTaskGetCurrentTaskHandle();
+
+    // Configure RTC INT pin with low-level interrupt (RTC INT active-low).
+    // GPIO 39 is input-only on ESP32 — no internal pull-up available.
     gpio_config_t io_conf = {};
     io_conf.pin_bit_mask = (1ULL << GPIO_NUM_39);
     io_conf.mode         = GPIO_MODE_INPUT;
-    io_conf.pull_up_en   = GPIO_PULLUP_ENABLE;
-    io_conf.intr_type    = GPIO_INTR_NEGEDGE;
+    io_conf.pull_up_en   = GPIO_PULLUP_DISABLE;
+    io_conf.intr_type    = GPIO_INTR_LOW_LEVEL;
     gpio_config(&io_conf);
     gpio_install_isr_service(0);
-    gpio_isr_handler_add(GPIO_NUM_39, alarmISR, NULL);
+    gpio_isr_handler_add(GPIO_NUM_39, alarmISR, (void *)mainTask);
 
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0xFFFFFF), LV_PART_MAIN);
 
@@ -99,13 +104,21 @@ extern "C" void app_main(void) {
     lv_obj_set_style_text_font(alarmLabel, &lv_font_montserrat_48, 0);
     lv_obj_align(alarmLabel, LV_ALIGN_CENTER, 0, 60);
 
-    updateTimeLabel(display, timeLabel, alarmLabel);
+    updateTimeLabel(display, timeLabel);
     lv_refr_now(lv_display_get_default());
     display.display();
 
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(60000));
-        updateTimeLabel(display, timeLabel, alarmLabel);
+        uint32_t notified = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(60000));
+        updateTimeLabel(display, timeLabel);
+        if (notified) {
+            display.rtc.clearAlarmFlag();
+            gpio_intr_enable(GPIO_NUM_39);
+            lv_label_set_text(alarmLabel, "ALARM!");
+        } else {
+            lv_label_set_text(alarmLabel, "");
+        }
+        lv_obj_align(alarmLabel, LV_ALIGN_CENTER, 0, 60);
         lv_refr_now(lv_display_get_default());
         display.display();
     }

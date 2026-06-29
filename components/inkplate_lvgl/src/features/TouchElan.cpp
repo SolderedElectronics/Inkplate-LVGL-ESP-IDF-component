@@ -26,13 +26,22 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 static const char *TAG = "TouchElan";
 
 static volatile bool tsFlag = false;
 
-static void IRAM_ATTR tsInt(void * /*arg*/) { tsFlag = true; }
+static void IRAM_ATTR tsInt(void *arg) {
+  tsFlag = true;
+  if (arg) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR((SemaphoreHandle_t)arg, &xHigherPriorityTaskWoken);
+    if (xHigherPriorityTaskWoken)
+      portYIELD_FROM_ISR();
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /*                              Public functions                              */
@@ -54,8 +63,12 @@ esp_err_t TouchElan::begin(I2C &i2c, PCAL &expander, uint8_t powerState) {
   gpio_set_intr_type(TOUCHSCREEN_INT, GPIO_INTR_NEGEDGE);
 
   if (!m_tsInitDone) {
+    if (!m_touchSemaphore) {
+      m_touchSemaphore = xSemaphoreCreateBinary();
+    }
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(TOUCHSCREEN_INT, tsInt, NULL));
+    ESP_ERROR_CHECK(
+        gpio_isr_handler_add(TOUCHSCREEN_INT, tsInt, m_touchSemaphore));
   }
 
   vTaskDelay(pdMS_TO_TICKS(50));
@@ -270,8 +283,13 @@ void TouchElan::power(bool enable) {
 }
 
 void TouchElan::end() {
-  if (m_tsInitDone)
+  if (m_tsInitDone) {
     gpio_isr_handler_remove((gpio_num_t)TOUCHSCREEN_INT);
+    if (m_touchSemaphore) {
+      vSemaphoreDelete(m_touchSemaphore);
+      m_touchSemaphore = NULL;
+    }
+  }
 
   tsFlag = false;
   power(false);

@@ -32,6 +32,7 @@
 
 #include "Inkplate.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include <stdio.h>
 
@@ -67,11 +68,16 @@ extern "C" void app_main(void) {
     int updateCount = 0;
     char buf[32];
 
+    SemaphoreHandle_t sem = display.touchscreen.getTouchSemaphore();
+
     while (1) {
-        if (display.touchscreen.available()) {
+        // Block until touch interrupt fires; timeout keeps WDT fed via IDLE.
+        if (xSemaphoreTake(sem, pdMS_TO_TICKS(100)) == pdTRUE) {
             uint16_t xPos[2] = {0, 0};
             uint16_t yPos[2] = {0, 0};
             uint8_t n = display.touchscreen.getData(xPos, yPos);
+            // Drain paired release event so it doesn't count as a spurious press.
+            xSemaphoreTake(sem, 0);
 
             if (n > 0) {
                 // Clamp so square stays on screen
@@ -96,7 +102,5 @@ extern "C" void app_main(void) {
                 }
             }
         }
-
-        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }

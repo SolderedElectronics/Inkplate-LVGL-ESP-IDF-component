@@ -92,10 +92,8 @@ extern "C" void app_main(void) {
     lv_refr_now(lv_display_get_default());
     display.display();
 
-    // Set alarm 60 s from now
-    time_t epoch;
-    display.rtc.getTime(&epoch);
-    display.rtc.setAlarmEpoch(epoch + 60);
+    // Alarm at 13:31:00 — match only on hour/min/sec, not day/weekday
+    display.rtc.setAlarm(0, 31, 13);
 
     // GPIO 39 = RTC INT pin, active-low alarm output
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);

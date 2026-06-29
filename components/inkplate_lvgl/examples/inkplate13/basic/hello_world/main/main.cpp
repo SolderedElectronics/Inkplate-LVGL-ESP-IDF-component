@@ -42,6 +42,7 @@
 
 extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
+    display.enableDithering(true);
 
     lv_obj_t *screen = lv_scr_act();
     lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
@@ -49,6 +50,7 @@ extern "C" void app_main(void) {
 
     lv_obj_t *label = lv_label_create(screen);
     lv_label_set_text(label, "Hello World!");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
     lv_obj_center(label);
 
     lv_refr_now(lv_display_get_default()); // Render LVGL scene into framebuffer

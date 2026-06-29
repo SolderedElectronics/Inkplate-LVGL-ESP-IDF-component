@@ -3,15 +3,14 @@
  * @author      Fran Fodor for Soldered
  * @brief       RTC alarm deep sleep example for Soldered Inkplate 6Color with LVGL.
  *
- * @details     Sets the RTC date/time, then configures an alarm to fire 60 seconds
- *              later. The device enters deep sleep and wakes when the RTC alarm
- *              triggers via the INT pin (GPIO39). Current time is displayed on
- *              wakeup.
+ * @details     Sets an RTC alarm 60 seconds ahead, displays current time, then
+ *              enters deep sleep. The RTC alarm interrupt (GPIO 39) wakes the
+ *              device and the display is refreshed with the new time.
  *
  * Requirements:
  * - Board:      Soldered Inkplate 6Color
  * - Framework:  ESP-IDF v6.x
- * - Hardware:   Inkplate 6Color, USB cable
+ * - Hardware:   Inkplate 6Color, USB cable, CR2032 battery (optional)
  * - Extra:      None
  *
  * Configuration:
@@ -19,7 +18,12 @@
  *
  * How to use:
  * 1) Build and flash to Inkplate 6Color.
- * 2) Device displays current time, sleeps, wakes every 60 s via RTC alarm.
+ * 2) Display shows current time and enters deep sleep.
+ * 3) Device wakes every 60 s via RTC alarm.
+ *
+ * Notes:
+ * - The RTC time is set once (if not already set) and persists across deep sleep.
+ * - GPIO 39 is the RTC INT pin (active-low alarm output).
  *
  * Docs:         https://docs.soldered.com/inkplate
  * Support:      https://forum.soldered.com/
@@ -34,47 +38,61 @@
 
 #include "Inkplate.h"
 #include "esp_sleep.h"
-#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include <time.h>
 
-static char timeText[128];
-
-static void buildCurrentTimeString(Inkplate &display) {
-    display.rtc.getRtcData();
-
-    const char *weekdayNames[] = {
-        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-
-    snprintf(timeText, sizeof(timeText),
-             "%s, %02d.%02d.%04d\n%02d:%02d:%02d",
-             weekdayNames[display.rtc.getWeekday()],
-             display.rtc.getDay(), display.rtc.getMonth(), display.rtc.getYear(),
-             display.rtc.getHour(), display.rtc.getMinute(), display.rtc.getSecond());
-}
+static const char *weekdayNames[] = {
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
+
     display.rtc.clearAlarmFlag();
 
-    if (!display.rtc.isSet()) {
-        display.rtc.setTime(13, 30, 0);
-        display.rtc.setDate(3, 12, 11, 2025);
+    // Only skip setTime on a genuine RTC alarm wakeup — the RTC is still running.
+    // Any other wakeup (power-on, reset, USB flash) must set the time.
+    if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_EXT0) {
+        // Wednesday, 12 November 2025, 13:30:00
+        // Note: setTime(struct tm) uses tm_mon = 1-12, tm_year = full year
+        struct tm t = {};
+        t.tm_hour = 13;
+        t.tm_min  = 30;
+        t.tm_sec  = 0;
+        t.tm_mday = 12;
+        t.tm_wday = 3;    // Wednesday (0=Sun)
+        t.tm_mon  = 11;   // November (1-12)
+        t.tm_year = 2025; // Full year
+        display.rtc.setTime(t);
     }
 
-    buildCurrentTimeString(display);
+    uint8_t hour    = display.rtc.getHour();
+    uint8_t minute  = display.rtc.getMinute();
+    uint8_t second  = display.rtc.getSecond();
+    uint8_t day     = display.rtc.getDay();
+    uint8_t weekday = display.rtc.getWeekday();
+    uint8_t month   = display.rtc.getMonth();
+    uint16_t year   = display.rtc.getYear();
+
+    char timeText[128];
+    snprintf(timeText, sizeof(timeText),
+             "%s, %02d.%02d.%04d\n%02d:%02d:%02d",
+             weekdayNames[weekday], day, month, year, hour, minute, second);
 
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0xFFFFFF), LV_PART_MAIN);
 
     lv_obj_t *label = lv_label_create(lv_screen_active());
     lv_label_set_text(label, timeText);
-    lv_obj_set_style_text_color(label, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_28, 0);
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(0x000000), 0);
+    lv_obj_center(label);
 
     lv_refr_now(lv_display_get_default());
     display.display();
 
-    display.rtc.setAlarmEpoch(display.rtc.getEpoch() + 60, RTC_ALARM_MATCH_DHHMMSS);
+    // Alarm at 13:31:00 — match only on hour/min/sec, not day/weekday
+    display.rtc.setAlarm(0, 31, 13);
 
+    // GPIO 39 = RTC INT pin, active-low alarm output
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
     esp_deep_sleep_start();
 }

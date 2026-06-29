@@ -34,12 +34,13 @@ static const char *TAG = "TouchCypress";
 static volatile bool tsFlag = false;
 
 static void IRAM_ATTR tsInt(void *arg) {
-    tsFlag = true;
-    if (arg) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xSemaphoreGiveFromISR((SemaphoreHandle_t)arg, &xHigherPriorityTaskWoken);
-        if (xHigherPriorityTaskWoken) portYIELD_FROM_ISR();
-    }
+  tsFlag = true;
+  if (arg) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR((SemaphoreHandle_t)arg, &xHigherPriorityTaskWoken);
+    if (xHigherPriorityTaskWoken)
+      portYIELD_FROM_ISR();
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -86,7 +87,8 @@ esp_err_t TouchCypress::begin(I2C &i2c, PCAL &expander, uint8_t powerState) {
         m_touchSemaphore = xSemaphoreCreateBinary();
       }
       ESP_ERROR_CHECK(gpio_install_isr_service(0));
-      ESP_ERROR_CHECK(gpio_isr_handler_add(TOUCHSCREEN_INT, tsInt, m_touchSemaphore));
+      ESP_ERROR_CHECK(
+          gpio_isr_handler_add(TOUCHSCREEN_INT, tsInt, m_touchSemaphore));
     }
 
     vTaskDelay(pdMS_TO_TICKS(50));
@@ -336,7 +338,8 @@ void TouchCypress::scale(struct cypressTouchData *touchData, uint16_t xSize,
       touchData->y[i] = temp;
     }
 
-    // Map to screen coordinates. Cast to uint32_t to avoid overflow before division.
+    // Map to screen coordinates. Cast to uint32_t to avoid overflow before
+    // division.
     touchData->x[i] = (uint16_t)((uint32_t)touchData->x[i] * xSize / divX);
     touchData->y[i] = (uint16_t)((uint32_t)touchData->y[i] * ySize / divY);
   }
