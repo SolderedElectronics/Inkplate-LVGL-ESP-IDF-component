@@ -137,7 +137,13 @@ In order to get a head start with Inkplate (any), follow these steps:
 
 ### Code examples
 
-Basic hello world examples are available for all supported boards in `components/inkplate_lvgl/examples/`. They are also available on the [component registry page](https://components.espressif.com/components/solderedelectronics/inkplate_lvgl).
+A full set of examples is now available for all supported boards in `components/inkplate_lvgl/examples/`. Examples are organized by board and cover:
+
+- **Basic** — hello world, grayscale/color modes, partial update
+- **Advanced** — deep sleep, RTC, Wi-Fi, SD card, I/O expander, image from buffer, touch input, battery voltage, frontlight
+- **Diagnostics** — burn-in cleaning
+
+Examples are also available directly on the [component registry page](https://components.espressif.com/components/solderedelectronics/inkplate_lvgl).
 
 ### Documentation
 

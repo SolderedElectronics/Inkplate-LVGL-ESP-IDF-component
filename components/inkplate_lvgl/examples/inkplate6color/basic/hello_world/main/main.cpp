@@ -49,6 +49,7 @@ extern "C" void app_main(void) {
 
     lv_obj_t *label = lv_label_create(screen);
     lv_label_set_text(label, "Hello World!");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_40, 0);
     lv_obj_center(label);
 
     lv_refr_now(lv_display_get_default()); // Render LVGL scene into framebuffer

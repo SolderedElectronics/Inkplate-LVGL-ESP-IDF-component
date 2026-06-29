@@ -1,0 +1,3 @@
+dependencies:
+  solderedelectronics/inkplate_lvgl: ">=1.0.0"
+  idf: ">=6.0.0"

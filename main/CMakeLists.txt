@@ -1,3 +1,3 @@
-idf_component_register(SRCS "main.cpp" "cat.c"
-                       REQUIRES "inkplate_lvgl"
+idf_component_register(SRCS "main.cpp"
+                       REQUIRES "inkplate_lvgl" "esp_driver_uart"
                        INCLUDE_DIRS ".")

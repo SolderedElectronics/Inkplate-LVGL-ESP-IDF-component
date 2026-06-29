@@ -24,6 +24,8 @@
 #pragma once
 
 #include "driver/i2c_master.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "stdint.h"
 #include "string.h"
 
@@ -130,6 +132,16 @@ public:
    */
   void setRotation(uint8_t rotation) { m_rotation = rotation; }
 
+  /**
+   * @brief Returns the FreeRTOS binary semaphore given from the touch ISR.
+   *
+   * Use xSemaphoreTake() to block until a touch event, then call getData()
+   * immediately to read coordinates.
+   *
+   * @return semaphore handle, or NULL if not initialised.
+   */
+  SemaphoreHandle_t getTouchSemaphore() const { return m_touchSemaphore; }
+
 private:
   const uint8_t hello_packet[4] = {0x55, 0x55, 0x55, 0x55};
 
@@ -198,6 +210,7 @@ private:
 
   i2c_master_dev_handle_t m_devHandle = nullptr;
   PCAL *m_expander = nullptr;
+  SemaphoreHandle_t m_touchSemaphore = NULL;
 
   uint16_t m_tsXResolution = 0;
   uint16_t m_tsYResolution = 0;

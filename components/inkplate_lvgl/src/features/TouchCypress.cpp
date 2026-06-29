@@ -33,7 +33,15 @@ static const char *TAG = "TouchCypress";
 
 static volatile bool tsFlag = false;
 
-static void IRAM_ATTR tsInt(void *arg) { tsFlag = true; }
+static void IRAM_ATTR tsInt(void *arg) {
+  tsFlag = true;
+  if (arg) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR((SemaphoreHandle_t)arg, &xHigherPriorityTaskWoken);
+    if (xHigherPriorityTaskWoken)
+      portYIELD_FROM_ISR();
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /*                              Public functions                              */
@@ -75,8 +83,12 @@ esp_err_t TouchCypress::begin(I2C &i2c, PCAL &expander, uint8_t powerState) {
     gpio_set_intr_type(TOUCHSCREEN_INT, GPIO_INTR_NEGEDGE);
 
     if (!m_tsInitDone) {
+      if (!m_touchSemaphore) {
+        m_touchSemaphore = xSemaphoreCreateBinary();
+      }
       ESP_ERROR_CHECK(gpio_install_isr_service(0));
-      ESP_ERROR_CHECK(gpio_isr_handler_add(TOUCHSCREEN_INT, tsInt, NULL));
+      ESP_ERROR_CHECK(
+          gpio_isr_handler_add(TOUCHSCREEN_INT, tsInt, m_touchSemaphore));
     }
 
     vTaskDelay(pdMS_TO_TICKS(50));
@@ -113,6 +125,7 @@ bool TouchCypress::touchInArea(int16_t x1, int16_t y1, int16_t w, int16_t h) {
         tsFlag = false;
         handshake();
       }
+      vTaskDelay(1);
     }
     touchT = esp_timer_get_time() / 1000;
     touchN = n;
@@ -297,10 +310,6 @@ bool TouchCypress::getTouchData(struct cypressTouchData *touchData) {
 
 void TouchCypress::scale(struct cypressTouchData *touchData, uint16_t xSize,
                          uint16_t ySize, bool flipX, bool flipY, bool swapXY) {
-  // Temp. variables for the mapped value.
-  uint16_t mappedX = 0;
-  uint16_t mappedY = 0;
-
   // Check for NULL pointer.
   if (touchData == NULL)
     return;
@@ -308,6 +317,11 @@ void TouchCypress::scale(struct cypressTouchData *touchData, uint16_t xSize,
   // If the number of detected fingers is different than one or two, return.
   if (touchData->fingers != 1 && touchData->fingers != 2)
     return;
+
+  // After swapXY the sensor axes are crossed, so use the swapped MAX constants
+  // as divisors to map to [0, xSize] and [0, ySize] correctly.
+  uint16_t divX = swapXY ? CYPRESS_TOUCH_MAX_Y : CYPRESS_TOUCH_MAX_X;
+  uint16_t divY = swapXY ? CYPRESS_TOUCH_MAX_X : CYPRESS_TOUCH_MAX_Y;
 
   // Map both touch channels.
   for (int i = 0; i < touchData->fingers; i++) {
@@ -324,11 +338,10 @@ void TouchCypress::scale(struct cypressTouchData *touchData, uint16_t xSize,
       touchData->y[i] = temp;
     }
 
-    // Map X value.
-    mappedX = (touchData->x[i] * xSize) / CYPRESS_TOUCH_MAX_X;
-
-    // Map Y value.
-    mappedY = (touchData->y[i] * ySize) / CYPRESS_TOUCH_MAX_Y;
+    // Map to screen coordinates. Cast to uint32_t to avoid overflow before
+    // division.
+    touchData->x[i] = (uint16_t)((uint32_t)touchData->x[i] * xSize / divX);
+    touchData->y[i] = (uint16_t)((uint32_t)touchData->y[i] * ySize / divY);
   }
 }
 
@@ -336,6 +349,10 @@ void TouchCypress::end() {
   if (m_tsInitDone) {
     gpio_isr_handler_remove(TOUCHSCREEN_INT);
     gpio_set_intr_type(TOUCHSCREEN_INT, GPIO_INTR_DISABLE);
+    if (m_touchSemaphore) {
+      vSemaphoreDelete(m_touchSemaphore);
+      m_touchSemaphore = NULL;
+    }
   }
 
   tsFlag = false;

@@ -310,7 +310,7 @@ void display_flush_callback(lv_display_t *disp, const lv_area_t *area,
     self->m_dither.ditherFramebuffer(px_map, w, h);
   } else {
     static const uint16_t pal[7] = {
-        0x0000, 0xFFFF, 0x0400, 0x000F, 0x8800, 0xFFE0, 0xFC60,
+        0x0000, 0xFFFF, 0x07E0, 0x001F, 0xF800, 0xFFE0, 0xFC00,
     };
     static const uint8_t palIdx[7] = {
         INKPLATE_BLACK, INKPLATE_WHITE,  INKPLATE_GREEN,  INKPLATE_BLUE,

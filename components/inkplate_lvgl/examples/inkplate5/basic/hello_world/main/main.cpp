@@ -42,13 +42,16 @@
 
 extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
+    display.setDisplayMode(BLACK_AND_WHITE);
 
     lv_obj_t *screen = lv_scr_act();
     lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    lv_obj_set_style_text_color(screen, lv_color_black(), LV_PART_MAIN);
 
     lv_obj_t *label = lv_label_create(screen);
     lv_label_set_text(label, "Hello World!");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
     lv_obj_center(label);
 
     lv_refr_now(lv_display_get_default()); // Render LVGL scene into framebuffer
