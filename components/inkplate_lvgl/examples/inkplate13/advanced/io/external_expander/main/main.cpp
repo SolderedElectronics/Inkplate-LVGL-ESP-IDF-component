@@ -40,15 +40,18 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+// expander1 is defined in BoardCommon.cpp but not exported in any header
+extern PCAL expander1;
+
 extern "C" void app_main(void) {
     Inkplate display(LV_DISPLAY_RENDER_MODE_FULL);
 
-    display.expander1.setDirection(IO_NUM_B7, IO_MODE_OUTPUT);
+    expander1.setDirection(IO_NUM_B7, IO_MODE_OUTPUT);
 
     while (1) {
-        display.expander1.setLevel(IO_NUM_B7, 0); // LED off
+        expander1.setLevel(IO_NUM_B7, 0); // LED off
         vTaskDelay(pdMS_TO_TICKS(1000));
-        display.expander1.setLevel(IO_NUM_B7, 1); // LED on
+        expander1.setLevel(IO_NUM_B7, 1); // LED on
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
