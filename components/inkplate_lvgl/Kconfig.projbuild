@@ -27,6 +27,9 @@ choice INKPLATE_BOARD
     config INKPLATE_BOARD_INKPLATE13
         bool "Inkplate13"
 
+    config INKPLATE_BOARD_INKPLATE7
+        bool "Inkplate7"
+
 endchoice
 
 endmenu

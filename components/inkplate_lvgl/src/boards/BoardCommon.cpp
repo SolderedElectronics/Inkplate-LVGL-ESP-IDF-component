@@ -54,6 +54,8 @@ static const char *TAG = "INKPLATE";
 #include "Inkplate10.h"
 #elif defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
 #include "Inkplate13.h"
+#elif defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
+#include "Inkplate7.h"
 #elif defined(CONFIG_INKPLATE_BOARD_INKPLATE5)
 #include "Inkplate5.h"
 #elif defined(CONFIG_INKPLATE_BOARD_INKPLATE4)
@@ -79,7 +81,8 @@ I2C i2c;
 PCAL expander1(IO_INT_ADDR, i2c);
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE5) &&                               \
     !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) &&                          \
-    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                              \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
 PCAL expander2(IO_EXT_ADDR, i2c);
 #endif
 TPS tps(i2c);
@@ -153,7 +156,8 @@ void BoardCommon::writePixelInternal(int16_t x, int16_t y, uint16_t color) {
   }
 
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) &&                          \
-    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                             \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
   if (m_displayMode == BLACK_AND_WHITE) {
     int x1 = x0 >> 3;
     int x_sub = x0 & 7;
@@ -190,7 +194,8 @@ esp_err_t BoardCommon::display(bool leaveOn) {
 
 void BoardCommon::blockGpioPins() {
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) &&                          \
-    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                             \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
   expander1.blockPin(WAKEUP);
   expander1.blockPin(PWRUP);
   expander1.blockPin(VCOM);
@@ -225,7 +230,8 @@ void BoardCommon::cleanBurnIn(uint8_t clearCycles, uint16_t cyclesDelay) {
   }
 }
 
-#ifndef CONFIG_INKPLATE_BOARD_INKPLATE13
+#if !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                              \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
 double BoardCommon::readBattery() {
   expander1.setLevel(IO_NUM_B1, 1, true);
   esp_rom_delay_us(5000);
@@ -333,7 +339,8 @@ const char *BoardCommon::getMountPoint() { return sdCard.getMountPoint(); }
 
 void BoardCommon::vscanStart() {
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) &&                          \
-    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                             \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
   CKV_SET;
   esp_rom_delay_us(7);
   SPV_CLEAR;
@@ -360,7 +367,8 @@ void BoardCommon::vscanStart() {
 
 void BoardCommon::vscanEnd() {
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) &&                          \
-    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                             \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
   CKV_CLEAR;
   LE_SET;
   LE_CLEAR;
@@ -374,7 +382,8 @@ bool BoardCommon::getPanelState() { return m_panelState; }
 
 esp_err_t BoardCommon::pmicBegin() {
 #if !defined(CONFIG_INKPLATE_BOARD_INKPLATE6COLOR) &&                          \
-    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                             \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
   WAKEUP_SET;
   esp_rom_delay_us(1000);
   esp_err_t ret = tps.initSequences();

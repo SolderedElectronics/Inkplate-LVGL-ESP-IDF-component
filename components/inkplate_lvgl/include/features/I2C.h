@@ -25,7 +25,8 @@
 
 #include "driver/i2c_master.h"
 
-#ifndef CONFIG_INKPLATE_BOARD_INKPLATE13
+#if !defined(CONFIG_INKPLATE_BOARD_INKPLATE13) &&                             \
+    !defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
 #define I2C_SDA GPIO_NUM_21
 #define I2C_SCL GPIO_NUM_22
 #else

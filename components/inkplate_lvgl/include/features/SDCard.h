@@ -28,7 +28,8 @@
 #include "sdmmc_cmd.h"
 
 // SPI pin numbers (GPIO)
-#if defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
+#if defined(CONFIG_INKPLATE_BOARD_INKPLATE13) ||                              \
+    defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
 #define SD_MISO GPIO_NUM_13
 #define SD_MOSI GPIO_NUM_11
 #define SD_SCK GPIO_NUM_12

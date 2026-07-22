@@ -41,6 +41,9 @@
 #elif defined(CONFIG_INKPLATE_BOARD_INKPLATE13)
 #include "Inkplate13.h"
 #define INKPLATE_BOARD_CLASS Inkplate13
+#elif defined(CONFIG_INKPLATE_BOARD_INKPLATE7)
+#include "Inkplate7.h"
+#define INKPLATE_BOARD_CLASS Inkplate7
 #elif CONFIG_INKPLATE_BOARD_INKPLATE5
 #include "Inkplate5.h"
 #define INKPLATE_BOARD_CLASS Inkplate5
