@@ -140,8 +140,12 @@ esp_err_t RTC::setAlarm(uint8_t second) {
   esp_err_t ret = ESP_OK;
   enableAlarm();
 
-  uint8_t data[2] = {RTC_SECOND_ALARM,
-                     (uint8_t)(decToBcd(second) & ~RTC_ALARM_AIE)};
+  uint8_t data[6] = {RTC_SECOND_ALARM,
+                     (uint8_t)(decToBcd(second) & ~RTC_ALARM_AIE),
+                     RTC_ALARM_AIE,  // minute: don't care
+                     RTC_ALARM_AIE,  // hour: don't care
+                     RTC_ALARM_AIE,  // day: don't care
+                     RTC_ALARM_AIE}; // weekday: don't care
 
   ret = i2c_master_transmit(m_devHandle, data, sizeof(data), -1);
   return ret;
@@ -151,9 +155,12 @@ esp_err_t RTC::setAlarm(uint8_t second, uint8_t minute) {
   esp_err_t ret = ESP_OK;
   enableAlarm();
 
-  uint8_t data[3] = {RTC_SECOND_ALARM,
+  uint8_t data[6] = {RTC_SECOND_ALARM,
                      (uint8_t)(decToBcd(second) & ~RTC_ALARM_AIE),
-                     (uint8_t)(decToBcd(minute) & ~RTC_ALARM_AIE)};
+                     (uint8_t)(decToBcd(minute) & ~RTC_ALARM_AIE),
+                     RTC_ALARM_AIE,  // hour: don't care
+                     RTC_ALARM_AIE,  // day: don't care
+                     RTC_ALARM_AIE}; // weekday: don't care
 
   ret = i2c_master_transmit(m_devHandle, data, sizeof(data), -1);
   return ret;
@@ -163,10 +170,12 @@ esp_err_t RTC::setAlarm(uint8_t second, uint8_t minute, uint8_t hour) {
   esp_err_t ret = ESP_OK;
   enableAlarm();
 
-  uint8_t data[4] = {RTC_SECOND_ALARM,
+  uint8_t data[6] = {RTC_SECOND_ALARM,
                      (uint8_t)(decToBcd(second) & ~RTC_ALARM_AIE),
                      (uint8_t)(decToBcd(minute) & ~RTC_ALARM_AIE),
-                     (uint8_t)(encodeHour(hour) & ~RTC_ALARM_AIE)};
+                     (uint8_t)(encodeHour(hour) & ~RTC_ALARM_AIE),
+                     RTC_ALARM_AIE,  // day: don't care
+                     RTC_ALARM_AIE}; // weekday: don't care
 
   ret = i2c_master_transmit(m_devHandle, data, sizeof(data), -1);
   return ret;
@@ -177,11 +186,12 @@ esp_err_t RTC::setAlarm(uint8_t second, uint8_t minute, uint8_t hour,
   esp_err_t ret = ESP_OK;
   enableAlarm();
 
-  uint8_t data[5] = {RTC_SECOND_ALARM,
+  uint8_t data[6] = {RTC_SECOND_ALARM,
                      (uint8_t)(decToBcd(second) & ~RTC_ALARM_AIE),
                      (uint8_t)(decToBcd(minute) & ~RTC_ALARM_AIE),
                      (uint8_t)(encodeHour(hour) & ~RTC_ALARM_AIE),
-                     (uint8_t)(decToBcd(mday) & ~RTC_ALARM_AIE)};
+                     (uint8_t)(decToBcd(mday) & ~RTC_ALARM_AIE),
+                     RTC_ALARM_AIE}; // weekday: don't care
 
   ret = i2c_master_transmit(m_devHandle, data, sizeof(data), -1);
   return ret;
