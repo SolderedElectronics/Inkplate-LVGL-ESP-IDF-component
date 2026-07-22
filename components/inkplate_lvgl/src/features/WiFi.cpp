@@ -138,16 +138,18 @@ uint8_t *WiFi::downloadFile(const char *url, int32_t *len) {
     return NULL;
   }
 
-  int32_t contentLen = (int32_t)esp_http_client_fetch_headers(client);
-  if (contentLen <= 0)
-    contentLen = *len;
-  else
-    *len = contentLen;
+  esp_wifi_set_ps(WIFI_PS_NONE); // avoid modem-sleep RX gaps tripping the read timeout mid-transfer
+
+  int32_t headerLen = (int32_t)esp_http_client_fetch_headers(client);
+  bool lengthKnown = headerLen > 0;
+  int32_t contentLen = lengthKnown ? headerLen : *len;
+  *len = contentLen;
 
   uint8_t *buffer = (uint8_t *)heap_caps_malloc(
       contentLen + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!buffer) {
     ESP_LOGE(TAG, "Failed to allocate %ld bytes", contentLen);
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
     esp_http_client_cleanup(client);
     return NULL;
   }
@@ -163,8 +165,21 @@ uint8_t *WiFi::downloadFile(const char *url, int32_t *len) {
     totalRead += read;
   }
 
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM); // restore default power save
+
+  bool complete = lengthKnown ? (totalRead == contentLen)
+                               : esp_http_client_is_complete_data_received(client);
+
   esp_http_client_cleanup(client);
   *len = totalRead;
+
+  if (!complete) {
+    ESP_LOGE(TAG, "Download truncated: got %ld of %ld bytes", totalRead,
+             contentLen);
+    heap_caps_free(buffer);
+    *len = 0;
+    return NULL;
+  }
 
   ESP_LOGI(TAG, "File downloaded");
 
@@ -198,16 +213,18 @@ uint8_t *WiFi::downloadFileHTTPS(const char *url, int32_t *len) {
     return NULL;
   }
 
-  int32_t contentLen = (int32_t)esp_http_client_fetch_headers(client);
-  if (contentLen <= 0)
-    contentLen = *len;
-  else
-    *len = contentLen;
+  esp_wifi_set_ps(WIFI_PS_NONE); // avoid modem-sleep RX gaps tripping the read timeout mid-transfer
+
+  int32_t headerLen = (int32_t)esp_http_client_fetch_headers(client);
+  bool lengthKnown = headerLen > 0;
+  int32_t contentLen = lengthKnown ? headerLen : *len;
+  *len = contentLen;
 
   uint8_t *buffer = (uint8_t *)heap_caps_malloc(
       contentLen + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!buffer) {
     ESP_LOGE(TAG, "Failed to allocate %ld bytes", contentLen);
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
     esp_http_client_cleanup(client);
     return NULL;
   }
@@ -224,8 +241,21 @@ uint8_t *WiFi::downloadFileHTTPS(const char *url, int32_t *len) {
     totalRead += read;
   }
 
+  esp_wifi_set_ps(WIFI_PS_MIN_MODEM); // restore default power save
+
+  bool complete = lengthKnown ? (totalRead == contentLen)
+                               : esp_http_client_is_complete_data_received(client);
+
   esp_http_client_cleanup(client);
   *len = totalRead;
+
+  if (!complete) {
+    ESP_LOGE(TAG, "Download truncated: got %ld of %ld bytes", totalRead,
+             contentLen);
+    heap_caps_free(buffer);
+    *len = 0;
+    return NULL;
+  }
 
   ESP_LOGI(TAG, "File downloaded");
 
